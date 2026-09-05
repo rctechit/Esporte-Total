@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title id="page-title">Nova unidade — Esporte Total</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="admin-shell">
+  <div class="admin-topbar">
+    <strong>🏆 Esporte Total — Admin</strong>
+    <div>
+      <a href="dashboard.html" style="margin-right: 16px;">← Voltar</a>
+      <a href="#" data-logout>Sair</a>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <h1 class="section__title" id="form-title">Nova unidade</h1>
+    <div id="form-alert"></div>
+
+    <form class="form-stack" id="unidade-form">
+      <div class="info-card">
+        <h2>Dados básicos</h2>
+        <div class="form-field">
+          <label for="nome">Nome da unidade *</label>
+          <input type="text" id="nome" required maxlength="120" />
+        </div>
+        <div class="form-field">
+          <label for="descricao">Descrição</label>
+          <textarea id="descricao" maxlength="2000"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Modalidades *</label>
+          <div class="checkbox-group" id="modalidades-checkboxes"></div>
+        </div>
+        <div class="form-field">
+          <label for="horarioFuncionamento">Horário de funcionamento</label>
+          <input type="text" id="horarioFuncionamento" placeholder="Ex: Seg a Sex, 8h às 22h" maxlength="200" />
+        </div>
+        <label class="checkbox-pill" style="width: fit-content;">
+          <input type="checkbox" id="ativo" checked />
+          Unidade ativa (visível no site)
+        </label>
+      </div>
+
+      <div class="info-card">
+        <h2>Endereço</h2>
+        <div class="form-field">
+          <label for="endereco">Endereço *</label>
+          <input type="text" id="endereco" required maxlength="200" />
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="form-field">
+            <label for="numero">Número</label>
+            <input type="text" id="numero" maxlength="20" />
+          </div>
+          <div class="form-field">
+            <label for="complemento">Complemento</label>
+            <input type="text" id="complemento" maxlength="100" />
+          </div>
+          <div class="form-field">
+            <label for="bairro">Bairro</label>
+            <input type="text" id="bairro" maxlength="100" />
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="form-field">
+            <label for="cidade">Cidade *</label>
+            <input type="text" id="cidade" required maxlength="100" />
+          </div>
+          <div class="form-field" style="max-width:120px;">
+            <label for="estado">UF *</label>
+            <input type="text" id="estado" required maxlength="2" style="text-transform:uppercase;" />
+          </div>
+          <div class="form-field">
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" maxlength="10" />
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h2>Contato</h2>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="form-field">
+            <label for="telefone">Telefone</label>
+            <input type="text" id="telefone" placeholder="(11) 99999-0000" />
+          </div>
+          <div class="form-field">
+            <label for="whatsapp">WhatsApp</label>
+            <input type="text" id="whatsapp" placeholder="(11) 99999-0000" />
+          </div>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="form-field">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" />
+          </div>
+          <div class="form-field">
+            <label for="site">Site</label>
+            <input type="url" id="site" placeholder="https://" />
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card" id="fotos-card" hidden>
+        <h2>Fotos</h2>
+        <p id="fotos-cloudinary-status" class="unidade-card__local"></p>
+        <div style="display:flex; gap:8px;">
+          <input type="url" id="nova-foto-url" placeholder="https://link-da-foto.jpg" style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid var(--color-border);" />
+          <button type="button" class="btn btn--outline" id="adicionar-foto-btn">Adicionar</button>
+        </div>
+        <div class="foto-list" id="foto-list"></div>
+      </div>
+
+      <button type="submit" class="btn btn--primary" id="submit-btn">Salvar unidade</button>
+    </form>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/admin/auth-guard.js"></script>
+  <script src="../js/admin/unidade-form.js"></script>
+</body>
+</html>

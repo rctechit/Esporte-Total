@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel do admin — Esporte Total</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="admin-shell">
+  <div class="admin-topbar">
+    <strong>🏆 Esporte Total — Admin</strong>
+    <div>
+      <span id="admin-nome" style="margin-right: 16px;"></span>
+      <a href="#" data-logout>Sair</a>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <div id="dashboard-alert"></div>
+
+    <section class="section" style="padding-top: 0;">
+      <div class="toolbar">
+        <h2 class="section__title">Modalidades</h2>
+        <form id="nova-modalidade-form" style="display:flex; gap:8px;">
+          <input type="text" id="nova-modalidade-nome" placeholder="Nova modalidade" required style="padding:8px 12px; border-radius:8px; border:1px solid var(--color-border);" />
+          <button type="submit" class="btn btn--outline btn--sm">Adicionar</button>
+        </form>
+      </div>
+      <div class="badge-list" id="modalidades-lista"></div>
+    </section>
+
+    <section class="section" style="padding-top: 24px;">
+      <div class="toolbar">
+        <h2 class="section__title">Unidades cadastradas</h2>
+        <a href="unidade-form.html" class="btn btn--primary">+ Nova unidade</a>
+      </div>
+
+      <form class="filtros" id="filtros-form">
+        <div class="form-field">
+          <label for="filtro-busca">Buscar</label>
+          <input type="search" id="filtro-busca" placeholder="Nome ou cidade" />
+        </div>
+        <div class="form-field">
+          <label for="filtro-modalidade">Modalidade</label>
+          <select id="filtro-modalidade">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn--primary">Filtrar</button>
+      </form>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Cidade/UF</th>
+              <th>Modalidades</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="unidades-tbody">
+            <tr><td colspan="5">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pagination" id="paginacao"></div>
+    </section>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/admin/auth-guard.js"></script>
+  <script src="../js/admin/dashboard.js"></script>
+</body>
+</html>

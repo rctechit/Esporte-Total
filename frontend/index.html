@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Esporte Total — Encontre quadras, clubes e escolas esportivas</title>
+  <meta name="description" content="Hub esportivo com unidades de futebol, tênis, beach tênis e paraquedismo perto de você." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar">
+      <a href="index.html" class="navbar__brand">
+        <span class="navbar__brand-icon">🏆</span>
+        Esporte Total
+      </a>
+      <button class="navbar__toggle" data-nav-toggle aria-expanded="false" aria-label="Abrir menu">☰</button>
+      <div class="navbar__menu" data-nav-menu>
+        <a href="index.html" class="navbar__link is-active">Início</a>
+        <a href="unidades.html" class="navbar__link">Unidades</a>
+        <a href="admin/login.html" class="navbar__link navbar__link--cta">Área do admin</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1 class="hero__title">Encontre a unidade esportiva ideal para você</h1>
+        <p class="hero__subtitle">Futebol, tênis, beach tênis e paraquedismo — tudo em um só lugar, organizado por cidade e modalidade.</p>
+
+        <form class="hero__search" id="hero-search-form">
+          <input type="search" id="hero-busca" placeholder="Buscar por nome ou cidade..." />
+          <select id="hero-modalidade">
+            <option value="">Todas as modalidades</option>
+          </select>
+          <button type="submit">Buscar</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Modalidades</h2>
+        </div>
+        <div class="modalidades-grid" id="modalidades-grid">
+          <p class="state-message">Carregando modalidades...</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div class="section__header">
+          <h2 class="section__title">Unidades em destaque</h2>
+          <a href="unidades.html" class="section__link">Ver todas →</a>
+        </div>
+        <div class="unidades-grid" id="unidades-destaque">
+          <p class="state-message">Carregando unidades...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="ano-atual"></span> Esporte Total. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

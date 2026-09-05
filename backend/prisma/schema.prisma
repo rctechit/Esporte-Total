@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  nome         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin_users")
+}
+
+model Modalidade {
+  id        String               @id @default(cuid())
+  nome      String               @unique
+  slug      String               @unique
+  descricao String?
+  icone     String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  unidades  UnidadeModalidade[]
+
+  @@map("modalidades")
+}
+
+model Unidade {
+  id                   String               @id @default(cuid())
+  nome                 String
+  slug                 String               @unique
+  descricao            String?
+  telefone             String?
+  whatsapp             String?
+  email                String?
+  site                 String?
+  endereco             String
+  numero               String?
+  complemento          String?
+  bairro               String?
+  cidade               String
+  estado               String
+  cep                  String?
+  latitude             Float?
+  longitude            Float?
+  horarioFuncionamento String?
+  ativo                Boolean              @default(true)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  modalidades          UnidadeModalidade[]
+  fotos                Foto[]
+
+  @@index([cidade])
+  @@index([estado])
+  @@index([ativo])
+  @@map("unidades")
+}
+
+model UnidadeModalidade {
+  unidadeId    String
+  modalidadeId String
+  unidade      Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+  modalidade   Modalidade @relation(fields: [modalidadeId], references: [id], onDelete: Cascade)
+
+  @@id([unidadeId, modalidadeId])
+  @@map("unidade_modalidades")
+}
+
+model Foto {
+  id        String   @id @default(cuid())
+  unidadeId String
+  url       String
+  publicId  String?
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+  unidade   Unidade  @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+
+  @@index([unidadeId])
+  @@map("fotos")
+}

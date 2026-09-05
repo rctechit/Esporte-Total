@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unidades — Esporte Total</title>
+  <meta name="description" content="Busque unidades esportivas por modalidade e cidade." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar">
+      <a href="index.html" class="navbar__brand">
+        <span class="navbar__brand-icon">🏆</span>
+        Esporte Total
+      </a>
+      <button class="navbar__toggle" data-nav-toggle aria-expanded="false" aria-label="Abrir menu">☰</button>
+      <div class="navbar__menu" data-nav-menu>
+        <a href="index.html" class="navbar__link">Início</a>
+        <a href="unidades.html" class="navbar__link is-active">Unidades</a>
+        <a href="admin/login.html" class="navbar__link navbar__link--cta">Área do admin</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="section">
+    <div class="container">
+      <div class="section__header">
+        <h1 class="section__title">Unidades esportivas</h1>
+      </div>
+
+      <form class="filtros" id="filtros-form">
+        <div class="form-field">
+          <label for="filtro-busca">Buscar</label>
+          <input type="search" id="filtro-busca" placeholder="Nome ou cidade" />
+        </div>
+        <div class="form-field">
+          <label for="filtro-modalidade">Modalidade</label>
+          <select id="filtro-modalidade">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="filtro-cidade">Cidade</label>
+          <input type="text" id="filtro-cidade" placeholder="Ex: São Paulo" />
+        </div>
+        <button type="submit" class="btn btn--primary">Filtrar</button>
+      </form>
+
+      <div class="unidades-grid" id="unidades-lista">
+        <p class="state-message">Carregando unidades...</p>
+      </div>
+
+      <div class="pagination" id="paginacao"></div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; <span id="ano-atual"></span> Esporte Total. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/unidades.js"></script>
+</body>
+</html>

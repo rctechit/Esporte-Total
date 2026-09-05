@@ -1,0 +1,23 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (nunca versionar segredos)
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Sistema operacional / editores
+.DS_Store
+.vscode/
+.idea/
+
+# Prisma
+backend/prisma/dev.db
