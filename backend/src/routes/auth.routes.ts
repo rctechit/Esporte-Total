@@ -64,7 +64,7 @@ export async function authRoutes(app: FastifyInstance) {
   );
 
   app.post("/logout", async (_request, reply) => {
-    reply.clearCookie("token", { path: "/" });
+    reply.clearCookie("token", { ...app.cookieOptions });
     return reply.send({ ok: true });
   });
 
