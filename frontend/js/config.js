@@ -5,5 +5,5 @@ const API_BASE_URL = (() => {
   if (isLocal) {
     return "http://localhost:3333/api";
   }
-  return "https://SUBSTITUA-PELA-URL-DO-BACKEND.up.railway.app/api";
+  return "https://esporte-total-production.up.railway.app/api";
 })();
