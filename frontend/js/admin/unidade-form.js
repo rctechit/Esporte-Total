@@ -17,33 +17,73 @@ function limparAlerta() {
   qs("#form-alert").innerHTML = "";
 }
 
-async function carregarCheckboxesModalidades(idsSelecionados = []) {
-  const wrap = qs("#modalidades-checkboxes");
+async function carregarModalidadesComPreco(selecionadas = []) {
+  const wrap = qs("#modalidades-precos");
   wrap.innerHTML = "";
   const modalidades = await api.get("/modalidades");
 
   for (const modalidade of modalidades) {
+    const selecionada = selecionadas.find((s) => s.modalidadeId === modalidade.id);
+
+    const linha = document.createElement("div");
+    linha.style.display = "flex";
+    linha.style.alignItems = "center";
+    linha.style.gap = "10px";
+
     const label = document.createElement("label");
     label.className = "checkbox-pill";
+    label.style.flex = "0 0 auto";
 
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.value = modalidade.id;
-    input.checked = idsSelecionados.includes(modalidade.id);
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = modalidade.id;
+    checkbox.dataset.modalidadeCheckbox = "1";
+    checkbox.checked = Boolean(selecionada);
 
-    label.append(input, document.createTextNode(` ${modalidade.icone || ""} ${modalidade.nome}`.trim()));
-    wrap.appendChild(label);
+    label.append(checkbox, document.createTextNode(` ${modalidade.icone || ""} ${modalidade.nome}`.trim()));
+
+    const precoInput = document.createElement("input");
+    precoInput.type = "number";
+    precoInput.min = "0";
+    precoInput.step = "0.01";
+    precoInput.placeholder = "Preço/hora (R$)";
+    precoInput.dataset.modalidadePreco = modalidade.id;
+    precoInput.style.maxWidth = "160px";
+    precoInput.style.padding = "8px 10px";
+    precoInput.style.borderRadius = "8px";
+    precoInput.style.border = "1px solid var(--color-border)";
+    precoInput.disabled = !checkbox.checked;
+    if (selecionada?.precoHora != null) {
+      precoInput.value = selecionada.precoHora;
+    }
+
+    checkbox.addEventListener("change", () => {
+      precoInput.disabled = !checkbox.checked;
+      if (!checkbox.checked) precoInput.value = "";
+    });
+
+    linha.append(label, precoInput);
+    wrap.appendChild(linha);
   }
 }
 
-function getModalidadeIdsSelecionados() {
-  return qsa("#modalidades-checkboxes input:checked").map((el) => el.value);
+function getModalidadesSelecionadas() {
+  return qsa('[data-modalidade-checkbox]:checked').map((checkbox) => {
+    const precoInput = qs(`[data-modalidade-preco="${checkbox.value}"]`);
+    const precoValor = precoInput?.value ? Number.parseFloat(precoInput.value) : undefined;
+    return {
+      modalidadeId: checkbox.value,
+      ...(precoValor ? { precoHora: precoValor } : {}),
+    };
+  });
 }
 
 function preencherFormulario(unidade) {
   qs("#nome").value = unidade.nome || "";
   qs("#descricao").value = unidade.descricao || "";
   qs("#horarioFuncionamento").value = unidade.horarioFuncionamento || "";
+  qs("#horaAbertura").value = unidade.horaAbertura || "";
+  qs("#horaFechamento").value = unidade.horaFechamento || "";
   qs("#ativo").checked = unidade.ativo !== false;
   qs("#endereco").value = unidade.endereco || "";
   qs("#numero").value = unidade.numero || "";
@@ -63,6 +103,8 @@ function coletarDadosFormulario() {
     nome: qs("#nome").value.trim(),
     descricao: qs("#descricao").value.trim(),
     horarioFuncionamento: qs("#horarioFuncionamento").value.trim(),
+    horaAbertura: qs("#horaAbertura").value.trim(),
+    horaFechamento: qs("#horaFechamento").value.trim(),
     ativo: qs("#ativo").checked,
     endereco: qs("#endereco").value.trim(),
     numero: qs("#numero").value.trim(),
@@ -75,7 +117,7 @@ function coletarDadosFormulario() {
     whatsapp: qs("#whatsapp").value.trim(),
     email: qs("#email").value.trim(),
     site: qs("#site").value.trim(),
-    modalidadeIds: getModalidadeIdsSelecionados(),
+    modalidades: getModalidadesSelecionadas(),
   };
 }
 
@@ -239,7 +281,7 @@ qs("#unidade-form").addEventListener("submit", async (event) => {
 
   const dados = coletarDadosFormulario();
 
-  if (!dados.modalidadeIds.length) {
+  if (!dados.modalidades.length) {
     mostrarAlerta("Selecione ao menos uma modalidade.");
     return;
   }
@@ -281,15 +323,18 @@ async function init() {
     try {
       unidadeAtual = await api.get(`/unidades/admin/${unidadeId}`);
       preencherFormulario(unidadeAtual);
-      await carregarCheckboxesModalidades(
-        (unidadeAtual.modalidades || []).map((rel) => rel.modalidadeId)
+      await carregarModalidadesComPreco(
+        (unidadeAtual.modalidades || []).map((rel) => ({
+          modalidadeId: rel.modalidadeId,
+          precoHora: rel.precoHora,
+        }))
       );
       renderFotos();
     } catch (error) {
       mostrarAlerta("Unidade não encontrada.");
     }
   } else {
-    await carregarCheckboxesModalidades();
+    await carregarModalidadesComPreco();
   }
 }
 

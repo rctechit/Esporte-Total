@@ -97,7 +97,53 @@ function renderUnidade(unidade) {
   }
 
   const lateral = document.createElement("div");
-  lateral.className = "info-card";
+  lateral.style.display = "flex";
+  lateral.style.flexDirection = "column";
+  lateral.style.gap = "16px";
+
+  const reservaCard = document.createElement("div");
+  reservaCard.className = "info-card";
+  const reservaTitulo = document.createElement("h2");
+  reservaTitulo.textContent = "Agende seu horário";
+  reservaCard.appendChild(reservaTitulo);
+
+  for (const rel of unidade.modalidades || []) {
+    const linha = document.createElement("div");
+    linha.style.display = "flex";
+    linha.style.justifyContent = "space-between";
+    linha.style.alignItems = "center";
+    linha.style.padding = "10px 0";
+    linha.style.borderBottom = "1px solid var(--color-border)";
+
+    const info = document.createElement("div");
+    const nomeModalidade = document.createElement("div");
+    nomeModalidade.style.fontWeight = "700";
+    nomeModalidade.textContent = `${rel.modalidade.icone || ""} ${rel.modalidade.nome}`.trim();
+    info.appendChild(nomeModalidade);
+
+    if (rel.precoHora) {
+      const preco = document.createElement("div");
+      preco.className = "unidade-card__local";
+      preco.textContent = `A partir de ${rel.precoHora.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      })}/hora`;
+      info.appendChild(preco);
+    }
+
+    const btn = document.createElement("a");
+    btn.className = "btn btn--primary btn--sm";
+    btn.textContent = "Ver disponibilidade";
+    btn.href = `disponibilidade.html?slug=${encodeURIComponent(unidade.slug)}&modalidadeId=${encodeURIComponent(
+      rel.modalidadeId
+    )}`;
+
+    linha.append(info, btn);
+    reservaCard.appendChild(linha);
+  }
+
+  const contatoCard = document.createElement("div");
+  contatoCard.className = "info-card";
   const contatoTitulo = document.createElement("h2");
   contatoTitulo.textContent = "Contato";
   const infoList = document.createElement("div");
@@ -107,7 +153,7 @@ function renderUnidade(unidade) {
   if (unidade.email) infoList.appendChild(criarInfoItem("✉️", unidade.email));
   if (unidade.site) infoList.appendChild(criarInfoItem("🌐", unidade.site));
 
-  lateral.append(contatoTitulo, infoList);
+  contatoCard.append(contatoTitulo, infoList);
 
   if (unidade.whatsapp) {
     const whatsappBtn = document.createElement("a");
@@ -120,8 +166,10 @@ function renderUnidade(unidade) {
       `Olá! Vi a unidade ${unidade.nome} no Esporte Total e gostaria de mais informações.`
     );
     whatsappBtn.textContent = "Falar no WhatsApp";
-    lateral.appendChild(whatsappBtn);
+    contatoCard.appendChild(whatsappBtn);
   }
+
+  lateral.append(reservaCard, contatoCard);
 
   grid.append(principal, lateral);
   conteudo.appendChild(grid);

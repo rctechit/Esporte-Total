@@ -32,13 +32,24 @@
           <textarea id="descricao" maxlength="2000"></textarea>
         </div>
         <div class="form-field">
-          <label>Modalidades *</label>
-          <div class="checkbox-group" id="modalidades-checkboxes"></div>
+          <label>Modalidades e preço da locação *</label>
+          <div id="modalidades-precos" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
         <div class="form-field">
-          <label for="horarioFuncionamento">Horário de funcionamento</label>
+          <label for="horarioFuncionamento">Horário de funcionamento (texto exibido no site)</label>
           <input type="text" id="horarioFuncionamento" placeholder="Ex: Seg a Sex, 8h às 22h" maxlength="200" />
         </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <div class="form-field">
+            <label for="horaAbertura">Abre às</label>
+            <input type="time" id="horaAbertura" />
+          </div>
+          <div class="form-field">
+            <label for="horaFechamento">Fecha às</label>
+            <input type="time" id="horaFechamento" />
+          </div>
+        </div>
+        <p class="unidade-card__local">Os horários acima definem a grade de agendamento (blocos de 1 hora) que aparece na página pública.</p>
         <label class="checkbox-pill" style="width: fit-content;">
           <input type="checkbox" id="ativo" checked />
           Unidade ativa (visível no site)

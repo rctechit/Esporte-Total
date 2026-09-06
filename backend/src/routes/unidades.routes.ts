@@ -6,9 +6,12 @@ import {
   updateUnidadeSchema,
   listUnidadesQuerySchema,
   addFotoSchema,
+  disponibilidadeQuerySchema,
+  createReservaSchema,
 } from "../schemas/unidade.schema.js";
 import { uniqueSlug } from "../lib/slug.js";
 import { geocodeAddress } from "../lib/geocode.js";
+import { gerarSlots, HORA_ABERTURA_PADRAO, HORA_FECHAMENTO_PADRAO } from "../lib/horarios.js";
 
 const unidadeInclude = {
   modalidades: { include: { modalidade: true } },
@@ -139,12 +142,12 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
-    const { modalidadeIds, ...rest } = blankToUndefined(parseResult.data);
+    const { modalidades, ...rest } = blankToUndefined(parseResult.data);
 
     const modalidadesExistentes = await prisma.modalidade.count({
-      where: { id: { in: modalidadeIds } },
+      where: { id: { in: modalidades.map((m) => m.modalidadeId) } },
     });
-    if (modalidadesExistentes !== modalidadeIds.length) {
+    if (modalidadesExistentes !== modalidades.length) {
       return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
     }
 
@@ -170,7 +173,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
         latitude: geo?.latitude,
         longitude: geo?.longitude,
         modalidades: {
-          create: modalidadeIds.map((modalidadeId) => ({ modalidadeId })),
+          create: modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
         },
       },
       include: unidadeInclude,
@@ -191,13 +194,13 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const { modalidadeIds, ...rest } = blankToUndefined(parseResult.data);
+    const { modalidades, ...rest } = blankToUndefined(parseResult.data);
 
-    if (modalidadeIds) {
+    if (modalidades) {
       const modalidadesExistentes = await prisma.modalidade.count({
-        where: { id: { in: modalidadeIds } },
+        where: { id: { in: modalidades.map((m) => m.modalidadeId) } },
       });
-      if (modalidadesExistentes !== modalidadeIds.length) {
+      if (modalidadesExistentes !== modalidades.length) {
         return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
       }
     }
@@ -223,7 +226,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
     }
 
     const unidade = await prisma.$transaction(async (tx) => {
-      if (modalidadeIds) {
+      if (modalidades) {
         await tx.unidadeModalidade.deleteMany({ where: { unidadeId: id } });
       }
 
@@ -232,8 +235,12 @@ export async function unidadesRoutes(app: FastifyInstance) {
         data: {
           ...rest,
           ...(geo ? { latitude: geo.latitude, longitude: geo.longitude } : {}),
-          ...(modalidadeIds
-            ? { modalidades: { create: modalidadeIds.map((modalidadeId) => ({ modalidadeId })) } }
+          ...(modalidades
+            ? {
+                modalidades: {
+                  create: modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
+                },
+              }
             : {}),
         },
         include: unidadeInclude,
@@ -284,5 +291,124 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     await prisma.foto.delete({ where: { id: fotoId } });
     return reply.code(204).send();
+  });
+
+  app.get("/:slug/disponibilidade", async (request, reply) => {
+    const { slug } = request.params as { slug: string };
+    const parseResult = disponibilidadeQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(400).send({ error: "Parâmetros inválidos.", details: parseResult.error.flatten() });
+    }
+    const { data, modalidadeId } = parseResult.data;
+
+    const unidade = await prisma.unidade.findFirst({ where: { slug, ativo: true } });
+    if (!unidade) {
+      return reply.code(404).send({ error: "Unidade não encontrada." });
+    }
+
+    const vinculo = await prisma.unidadeModalidade.findUnique({
+      where: { unidadeId_modalidadeId: { unidadeId: unidade.id, modalidadeId } },
+    });
+    if (!vinculo) {
+      return reply.code(400).send({ error: "Esta unidade não oferece a modalidade informada." });
+    }
+
+    const slots = gerarSlots(
+      unidade.horaAbertura || HORA_ABERTURA_PADRAO,
+      unidade.horaFechamento || HORA_FECHAMENTO_PADRAO
+    );
+
+    const dataConsulta = new Date(`${data}T00:00:00.000Z`);
+
+    const reservasDoDia = await prisma.reserva.findMany({
+      where: {
+        unidadeId: unidade.id,
+        modalidadeId,
+        data: dataConsulta,
+        status: { not: "cancelada" },
+      },
+      select: { horarios: true },
+    });
+
+    const horariosOcupados = new Set(reservasDoDia.flatMap((r) => r.horarios));
+
+    return reply.send({
+      precoHora: vinculo.precoHora,
+      horaAbertura: unidade.horaAbertura || HORA_ABERTURA_PADRAO,
+      horaFechamento: unidade.horaFechamento || HORA_FECHAMENTO_PADRAO,
+      horarios: slots.map((horario) => ({ horario, disponivel: !horariosOcupados.has(horario) })),
+    });
+  });
+
+  app.post("/:id/reservas", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parseResult = createReservaSchema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
+    }
+    const { modalidadeId, data, horarios, nomeSolicitante, telefoneSolicitante } = parseResult.data;
+
+    const unidade = await prisma.unidade.findFirst({ where: { id, ativo: true } });
+    if (!unidade) {
+      return reply.code(404).send({ error: "Unidade não encontrada." });
+    }
+
+    const vinculo = await prisma.unidadeModalidade.findUnique({
+      where: { unidadeId_modalidadeId: { unidadeId: unidade.id, modalidadeId } },
+    });
+    if (!vinculo) {
+      return reply.code(400).send({ error: "Esta unidade não oferece a modalidade informada." });
+    }
+
+    const slotsValidos = new Set(
+      gerarSlots(unidade.horaAbertura || HORA_ABERTURA_PADRAO, unidade.horaFechamento || HORA_FECHAMENTO_PADRAO)
+    );
+    const horarioInvalido = horarios.find((h) => !slotsValidos.has(h));
+    if (horarioInvalido) {
+      return reply.code(400).send({ error: `O horário ${horarioInvalido} está fora do funcionamento da unidade.` });
+    }
+
+    const dataReserva = new Date(`${data}T00:00:00.000Z`);
+
+    const reserva = await prisma.$transaction(async (tx) => {
+      const conflitos = await tx.reserva.findMany({
+        where: {
+          unidadeId: unidade.id,
+          modalidadeId,
+          data: dataReserva,
+          status: { not: "cancelada" },
+          horarios: { hasSome: horarios },
+        },
+      });
+
+      if (conflitos.length > 0) {
+        throw new Error("CONFLITO_HORARIO");
+      }
+
+      const valorTotal = vinculo.precoHora ? vinculo.precoHora * horarios.length : null;
+
+      return tx.reserva.create({
+        data: {
+          unidadeId: unidade.id,
+          modalidadeId,
+          data: dataReserva,
+          horarios,
+          nomeSolicitante,
+          telefoneSolicitante,
+          valorTotal,
+        },
+      });
+    }).catch((error) => {
+      if (error instanceof Error && error.message === "CONFLITO_HORARIO") {
+        return null;
+      }
+      throw error;
+    });
+
+    if (!reserva) {
+      return reply.code(409).send({ error: "Um ou mais horários selecionados acabaram de ser reservados. Escolha outro horário." });
+    }
+
+    return reply.code(201).send(reserva);
   });
 }

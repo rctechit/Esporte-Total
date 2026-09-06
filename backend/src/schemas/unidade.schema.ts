@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 const telefoneRegex = /^[0-9()+\-\s]{8,20}$/;
+const horaRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const modalidadePrecoSchema = z.object({
+  modalidadeId: z.string().cuid(),
+  precoHora: z.number().positive().max(100000).optional(),
+});
 
 export const createUnidadeSchema = z.object({
   nome: z.string().min(2).max(120),
@@ -17,12 +23,14 @@ export const createUnidadeSchema = z.object({
   estado: z.string().length(2),
   cep: z.string().max(10).optional(),
   horarioFuncionamento: z.string().max(200).optional(),
+  horaAbertura: z.string().regex(horaRegex).optional().or(z.literal("")),
+  horaFechamento: z.string().regex(horaRegex).optional().or(z.literal("")),
   ativo: z.boolean().optional(),
-  modalidadeIds: z.array(z.string().cuid()).min(1, "Selecione ao menos uma modalidade"),
+  modalidades: z.array(modalidadePrecoSchema).min(1, "Selecione ao menos uma modalidade"),
 });
 
 export const updateUnidadeSchema = createUnidadeSchema.partial().extend({
-  modalidadeIds: z.array(z.string().cuid()).min(1).optional(),
+  modalidades: z.array(modalidadePrecoSchema).min(1).optional(),
 });
 
 export const listUnidadesQuerySchema = z.object({
@@ -40,7 +48,29 @@ export const addFotoSchema = z.object({
   ordem: z.number().int().min(0).optional(),
 });
 
+export const disponibilidadeQuerySchema = z.object({
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato AAAA-MM-DD"),
+  modalidadeId: z.string().cuid(),
+});
+
+export const createReservaSchema = z.object({
+  modalidadeId: z.string().cuid(),
+  data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data deve estar no formato AAAA-MM-DD"),
+  horarios: z
+    .array(z.string().regex(/^([01]\d|2[0-3]):00$/))
+    .min(1, "Selecione ao menos um horário"),
+  nomeSolicitante: z.string().min(2).max(120),
+  telefoneSolicitante: z.string().regex(telefoneRegex),
+});
+
+export const updateReservaStatusSchema = z.object({
+  status: z.enum(["pendente", "confirmada", "cancelada"]),
+});
+
 export type CreateUnidadeInput = z.infer<typeof createUnidadeSchema>;
 export type UpdateUnidadeInput = z.infer<typeof updateUnidadeSchema>;
 export type ListUnidadesQuery = z.infer<typeof listUnidadesQuerySchema>;
 export type AddFotoInput = z.infer<typeof addFotoSchema>;
+export type DisponibilidadeQuery = z.infer<typeof disponibilidadeQuerySchema>;
+export type CreateReservaInput = z.infer<typeof createReservaSchema>;
+export type UpdateReservaStatusInput = z.infer<typeof updateReservaStatusSchema>;

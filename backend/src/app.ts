@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth.routes.js";
 import { modalidadesRoutes } from "./routes/modalidades.routes.js";
 import { unidadesRoutes } from "./routes/unidades.routes.js";
 import { uploadsRoutes } from "./routes/uploads.routes.js";
+import { reservasRoutes } from "./routes/reservas.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -26,6 +27,7 @@ export function buildApp() {
   app.register(cors, {
     origin: corsOrigins,
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"],
   });
 
   app.register(cookie);
@@ -59,6 +61,7 @@ export function buildApp() {
   app.register(modalidadesRoutes, { prefix: "/api/modalidades" });
   app.register(unidadesRoutes, { prefix: "/api/unidades" });
   app.register(uploadsRoutes, { prefix: "/api/uploads" });
+  app.register(reservasRoutes, { prefix: "/api/reservas" });
 
   return app;
 }

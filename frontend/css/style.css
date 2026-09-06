@@ -737,6 +737,86 @@ th, td {
   cursor: not-allowed;
 }
 
+/* ---------- Agendamento ---------- */
+
+.dias-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+.dia-btn {
+  flex: 0 0 auto;
+  min-width: 64px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dia-btn__semana {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.dia-btn__numero {
+  display: block;
+  font-size: 1.1rem;
+}
+
+.dia-btn.is-selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.dia-btn.is-selected .dia-btn__semana {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.slot-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: 12px 8px;
+  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.slot-btn.is-selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.slot-btn.is-indisponivel {
+  background: #f1f5f9;
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.reserva-resumo-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.9rem;
+}
+
 /* ---------- Footer ---------- */
 
 .site-footer {

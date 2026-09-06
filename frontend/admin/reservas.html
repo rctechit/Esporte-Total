@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservas — Esporte Total Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="admin-shell">
+  <div class="admin-topbar">
+    <strong>🏆 Esporte Total — Admin</strong>
+    <div>
+      <a href="dashboard.html" style="margin-right: 16px;">← Unidades</a>
+      <a href="#" data-logout>Sair</a>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <div id="reservas-alert"></div>
+
+    <div class="toolbar">
+      <h1 class="section__title">Solicitações de reserva</h1>
+      <div class="form-field" style="min-width:200px;">
+        <label for="filtro-status">Status</label>
+        <select id="filtro-status">
+          <option value="">Todas</option>
+          <option value="pendente">Pendentes</option>
+          <option value="confirmada">Confirmadas</option>
+          <option value="cancelada">Canceladas</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="unidade-card__local">
+      O pagamento via Pix ainda não é automático — combine com o cliente pelo telefone informado e confirme aqui manualmente.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Unidade</th>
+            <th>Modalidade</th>
+            <th>Data</th>
+            <th>Horários</th>
+            <th>Cliente</th>
+            <th>Telefone</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="reservas-tbody">
+          <tr><td colspan="9">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/admin/auth-guard.js"></script>
+  <script src="../js/admin/reservas.js"></script>
+</body>
+</html>

@@ -27,6 +27,7 @@ model Modalidade {
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
   unidades  UnidadeModalidade[]
+  reservas  Reserva[]
 
   @@map("modalidades")
 }
@@ -50,11 +51,14 @@ model Unidade {
   latitude             Float?
   longitude            Float?
   horarioFuncionamento String?
+  horaAbertura         String?
+  horaFechamento       String?
   ativo                Boolean              @default(true)
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   modalidades          UnidadeModalidade[]
   fotos                Foto[]
+  reservas             Reserva[]
 
   @@index([cidade])
   @@index([estado])
@@ -65,11 +69,31 @@ model Unidade {
 model UnidadeModalidade {
   unidadeId    String
   modalidadeId String
+  precoHora    Float?
   unidade      Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
   modalidade   Modalidade @relation(fields: [modalidadeId], references: [id], onDelete: Cascade)
 
   @@id([unidadeId, modalidadeId])
   @@map("unidade_modalidades")
+}
+
+model Reserva {
+  id                  String     @id @default(cuid())
+  unidadeId           String
+  modalidadeId        String
+  data                DateTime
+  horarios            String[]
+  nomeSolicitante     String
+  telefoneSolicitante String
+  valorTotal          Float?
+  status              String     @default("pendente")
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  unidade             Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+  modalidade          Modalidade @relation(fields: [modalidadeId], references: [id])
+
+  @@index([unidadeId, data])
+  @@map("reservas")
 }
 
 model Foto {
