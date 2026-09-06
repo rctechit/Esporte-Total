@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, empresaFiltro } from "../middleware/requireAuth.js";
 import {
   createUnidadeSchema,
   updateUnidadeSchema,
@@ -12,6 +12,8 @@ import {
 import { uniqueSlug } from "../lib/slug.js";
 import { geocodeAddress } from "../lib/geocode.js";
 import { gerarSlots, HORA_ABERTURA_PADRAO, HORA_FECHAMENTO_PADRAO } from "../lib/horarios.js";
+import { criarPagamentoPix, mercadoPagoEnabled } from "../lib/mercadopago.js";
+import { env } from "../env.js";
 
 const unidadeInclude = {
   modalidades: { include: { modalidade: true } },
@@ -46,8 +48,10 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Parâmetros inválidos.", details: parseResult.error.flatten() });
     }
     const { modalidade, cidade, busca, page, pageSize } = parseResult.data;
+    const empresaId = empresaFiltro(request);
 
     const where = {
+      ...(empresaId ? { empresaId } : {}),
       ...(modalidade ? { modalidades: { some: { modalidade: { slug: modalidade } } } } : {}),
       ...(cidade ? { cidade: { equals: cidade, mode: "insensitive" as const } } : {}),
       ...(busca
@@ -77,9 +81,10 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
   app.get("/admin/:id", { preHandler: requireAuth }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const empresaId = empresaFiltro(request);
     const unidade = await prisma.unidade.findUnique({ where: { id }, include: unidadeInclude });
 
-    if (!unidade) {
+    if (!unidade || (empresaId && unidade.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
@@ -142,7 +147,25 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
-    const { modalidades, ...rest } = blankToUndefined(parseResult.data);
+    const { modalidades, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
+
+    let empresaId: string;
+    if (request.user.role === "super_admin") {
+      if (!empresaIdBody) {
+        return reply.code(400).send({ error: "Informe a empresa dona desta unidade." });
+      }
+      empresaId = empresaIdBody;
+    } else {
+      if (!request.user.empresaId) {
+        return reply.code(403).send({ error: "Seu usuário não está vinculado a nenhuma empresa." });
+      }
+      empresaId = request.user.empresaId;
+    }
+
+    const empresa = await prisma.empresa.findUnique({ where: { id: empresaId } });
+    if (!empresa) {
+      return reply.code(400).send({ error: "Empresa informada não existe." });
+    }
 
     const modalidadesExistentes = await prisma.modalidade.count({
       where: { id: { in: modalidades.map((m) => m.modalidadeId) } },
@@ -169,6 +192,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
     const unidade = await prisma.unidade.create({
       data: {
         ...rest,
+        empresaId,
         slug,
         latitude: geo?.latitude,
         longitude: geo?.longitude,
@@ -189,12 +213,13 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
+    const empresaId = empresaFiltro(request);
     const existing = await prisma.unidade.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || (empresaId && existing.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const { modalidades, ...rest } = blankToUndefined(parseResult.data);
+    const { modalidades, empresaId: _empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
 
     if (modalidades) {
       const modalidadesExistentes = await prisma.modalidade.count({
@@ -252,9 +277,10 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
   app.delete("/:id", { preHandler: requireAuth }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const empresaId = empresaFiltro(request);
 
     const existing = await prisma.unidade.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || (empresaId && existing.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
@@ -264,13 +290,14 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
   app.post("/:id/fotos", { preHandler: requireAuth }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const empresaId = empresaFiltro(request);
     const parseResult = addFotoSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
     const unidade = await prisma.unidade.findUnique({ where: { id } });
-    if (!unidade) {
+    if (!unidade || (empresaId && unidade.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
@@ -283,6 +310,12 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
   app.delete("/:id/fotos/:fotoId", { preHandler: requireAuth }, async (request, reply) => {
     const { id, fotoId } = request.params as { id: string; fotoId: string };
+    const empresaId = empresaFiltro(request);
+
+    const unidade = await prisma.unidade.findUnique({ where: { id } });
+    if (!unidade || (empresaId && unidade.empresaId !== empresaId)) {
+      return reply.code(404).send({ error: "Unidade não encontrada." });
+    }
 
     const foto = await prisma.foto.findFirst({ where: { id: fotoId, unidadeId: id } });
     if (!foto) {
@@ -291,6 +324,67 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     await prisma.foto.delete({ where: { id: fotoId } });
     return reply.code(204).send();
+  });
+
+  // Agenda do dono: mostra os 3 estados que importam pro negocio (disponivel,
+  // aguardando aprovacao, locado). Diferente da rota publica, aqui a reserva
+  // com Pix ainda pendente tambem aparece (o dono ve que o horario esta
+  // "em processo"), so nao aparece nada pra reserva cancelada.
+  app.get("/:id/agenda-admin", { preHandler: requireAuth }, async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const empresaId = empresaFiltro(request);
+    const parseResult = disponibilidadeQuerySchema.safeParse(request.query);
+    if (!parseResult.success) {
+      return reply.code(400).send({ error: "Parâmetros inválidos.", details: parseResult.error.flatten() });
+    }
+    const { data, modalidadeId } = parseResult.data;
+
+    const unidade = await prisma.unidade.findUnique({ where: { id } });
+    if (!unidade || (empresaId && unidade.empresaId !== empresaId)) {
+      return reply.code(404).send({ error: "Unidade não encontrada." });
+    }
+
+    const slots = gerarSlots(
+      unidade.horaAbertura || HORA_ABERTURA_PADRAO,
+      unidade.horaFechamento || HORA_FECHAMENTO_PADRAO
+    );
+
+    const dataConsulta = new Date(`${data}T00:00:00.000Z`);
+
+    const reservasDoDia = await prisma.reserva.findMany({
+      where: { unidadeId: id, modalidadeId, data: dataConsulta, status: { not: "cancelada" } },
+      select: { horarios: true, status: true, nomeSolicitante: true, telefoneSolicitante: true },
+    });
+
+    const statusPorHorario = new Map<string, { status: string; nomeSolicitante: string; telefoneSolicitante: string }>();
+    for (const reserva of reservasDoDia) {
+      for (const horario of reserva.horarios) {
+        statusPorHorario.set(horario, {
+          status: reserva.status,
+          nomeSolicitante: reserva.nomeSolicitante,
+          telefoneSolicitante: reserva.telefoneSolicitante,
+        });
+      }
+    }
+
+    const horarios = slots.map((horario) => {
+      const ocupado = statusPorHorario.get(horario);
+      if (!ocupado) {
+        return { horario, status: "disponivel" as const };
+      }
+      const statusLabel =
+        ocupado.status === "confirmada"
+          ? ("locado" as const)
+          : ("aguardando_aprovacao" as const);
+      return {
+        horario,
+        status: statusLabel,
+        nomeSolicitante: ocupado.nomeSolicitante,
+        telefoneSolicitante: ocupado.telefoneSolicitante,
+      };
+    });
+
+    return reply.send({ horarios });
   });
 
   app.get("/:slug/disponibilidade", async (request, reply) => {
@@ -320,6 +414,8 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     const dataConsulta = new Date(`${data}T00:00:00.000Z`);
 
+    // "Aguardando pagamento" ainda trava o horario (evita dois clientes
+    // pagando pelo mesmo slot ao mesmo tempo) - so cancelada libera.
     const reservasDoDia = await prisma.reserva.findMany({
       where: {
         unidadeId: unidade.id,
@@ -370,7 +466,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     const dataReserva = new Date(`${data}T00:00:00.000Z`);
 
-    const reserva = await prisma.$transaction(async (tx) => {
+    const reservaCriada = await prisma.$transaction(async (tx) => {
       const conflitos = await tx.reserva.findMany({
         where: {
           unidadeId: unidade.id,
@@ -386,6 +482,11 @@ export async function unidadesRoutes(app: FastifyInstance) {
       }
 
       const valorTotal = vinculo.precoHora ? vinculo.precoHora * horarios.length : null;
+      const valorSinal = valorTotal ? Math.round(valorTotal * 0.3 * 100) / 100 : null;
+
+      // Sem Mercado Pago configurado (ou sem preco definido para calcular o
+      // sinal), cai no fluxo antigo: vai direto para "aguardando aprovacao".
+      const statusInicial = mercadoPagoEnabled && valorSinal ? "aguardando_pagamento" : "pendente";
 
       return tx.reserva.create({
         data: {
@@ -396,6 +497,8 @@ export async function unidadesRoutes(app: FastifyInstance) {
           nomeSolicitante,
           telefoneSolicitante,
           valorTotal,
+          valorSinal,
+          status: statusInicial,
         },
       });
     }).catch((error) => {
@@ -405,10 +508,49 @@ export async function unidadesRoutes(app: FastifyInstance) {
       throw error;
     });
 
-    if (!reserva) {
+    if (!reservaCriada) {
       return reply.code(409).send({ error: "Um ou mais horários selecionados acabaram de ser reservados. Escolha outro horário." });
     }
 
-    return reply.code(201).send(reserva);
+    if (reservaCriada.status !== "aguardando_pagamento" || !reservaCriada.valorSinal) {
+      return reply.code(201).send(reservaCriada);
+    }
+
+    // Gera a cobranca Pix do sinal. Se o Mercado Pago falhar aqui, a reserva
+    // ja existe (o horario ja ficou travado) - deixamos como aguardando
+    // pagamento e devolvemos o erro para o cliente tentar de novo.
+    try {
+      const notificationUrl = env.PUBLIC_API_URL
+        ? `${env.PUBLIC_API_URL.replace(/\/$/, "")}/api/pagamentos/webhook`
+        : undefined;
+
+      const pagamento = await criarPagamentoPix({
+        valor: reservaCriada.valorSinal,
+        descricao: `Sinal de reserva - ${unidade.nome}`,
+        reservaId: reservaCriada.id,
+        notificationUrl,
+      });
+
+      if (!pagamento) {
+        return reply.code(201).send(reservaCriada);
+      }
+
+      const reservaAtualizada = await prisma.reserva.update({
+        where: { id: reservaCriada.id },
+        data: {
+          pixPaymentId: String(pagamento.id),
+          pixQrCode: pagamento.qrCodeBase64,
+          pixCopiaCola: pagamento.copiaECola,
+        },
+      });
+
+      return reply.code(201).send(reservaAtualizada);
+    } catch (error) {
+      request.log.error(error, "Falha ao gerar cobrança Pix");
+      return reply.code(201).send({
+        ...reservaCriada,
+        avisoPagamento: "Não foi possível gerar o Pix agora. Tente novamente em instantes ou entre em contato pelo telefone da unidade.",
+      });
+    }
   });
 }

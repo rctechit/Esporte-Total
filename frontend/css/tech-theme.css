@@ -1,0 +1,253 @@
+/* Redesign visual "tecnológico/animado" — aplicado só nas páginas públicas
+   (home, unidades, detalhe, agendamento) via <body class="tech-theme">.
+   O painel admin mantém o visual claro original (tabelas e formulários
+   densos ficam mais legíveis em tema claro). */
+
+body.tech-theme {
+  --color-primary: #34e1ff;
+  --color-primary-dark: #7fe8fa;
+  --color-primary-light: rgba(52, 225, 255, 0.14);
+  --color-accent: #f2b705;
+  --color-bg: #0a0e17;
+  --color-surface: #121826;
+  --color-text: #eef2f7;
+  --color-text-muted: #8793a6;
+  --color-border: #232c3d;
+  --color-danger: #ff6b6b;
+
+  --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+}
+
+body.tech-theme h1,
+body.tech-theme h2,
+body.tech-theme .navbar__brand,
+body.tech-theme .modalidade-card h3,
+body.tech-theme .unidade-card__nome {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+body.tech-theme .hero {
+  background: radial-gradient(circle at 15% 20%, #123244 0%, #0a0e17 55%), linear-gradient(135deg, #0a0e17, #0a0e17);
+  border-bottom: 1px solid var(--color-border);
+}
+
+body.tech-theme .hero__search input,
+body.tech-theme .hero__search select {
+  background: #0f1520;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+body.tech-theme .hero__search input::placeholder {
+  color: var(--color-text-muted);
+}
+
+body.tech-theme .hero__search button {
+  background: var(--color-accent);
+  color: #1a1200;
+}
+
+body.tech-theme .site-header {
+  background: rgba(10, 14, 23, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+body.tech-theme .navbar__menu {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+body.tech-theme .navbar__link--cta {
+  background: var(--color-primary);
+  color: #031017;
+  font-weight: 700;
+}
+
+body.tech-theme .slot-btn.is-indisponivel {
+  background: #0f1520;
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+}
+
+body.tech-theme .slot-btn.is-selected,
+body.tech-theme .btn--primary {
+  color: #031017;
+}
+
+body.tech-theme .dia-btn,
+body.tech-theme .slot-btn {
+  background: #0f1520;
+  color: var(--color-text);
+}
+
+body.tech-theme .modalidade-card__meta,
+body.tech-theme .unidade-card__local {
+  font-family: var(--font-mono);
+}
+
+/* ---------- Hero animado (só na home) ---------- */
+
+.hero-tech-art {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+  margin: 32px auto 0;
+}
+
+.hero-tech-art svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hero-tech-art .court-path {
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 1.6;
+  stroke-dasharray: 1400;
+  stroke-dashoffset: 1400;
+  animation: tech-draw 2.4s cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
+  opacity: 0.9;
+}
+
+.hero-tech-art .court-path--dim {
+  stroke: #33405a;
+  opacity: 0.6;
+}
+
+.hero-tech-art .court-path.d2 {
+  animation-delay: 0.2s;
+}
+.hero-tech-art .court-path.d3 {
+  animation-delay: 0.4s;
+}
+.hero-tech-art .court-path.d4 {
+  animation-delay: 0.6s;
+}
+
+@keyframes tech-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.hero-tech-art .scanline {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+  animation: tech-scan 4.5s ease-in-out infinite;
+  opacity: 0.8;
+}
+
+@keyframes tech-scan {
+  0% {
+    top: 6%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  50% {
+    top: 94%;
+    opacity: 0.9;
+  }
+  62% {
+    opacity: 0;
+  }
+  100% {
+    top: 94%;
+    opacity: 0;
+  }
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  padding: 6px 12px;
+  border: 1px solid rgba(52, 225, 255, 0.35);
+  border-radius: 3px;
+  background: rgba(52, 225, 255, 0.06);
+  margin-bottom: 16px;
+}
+
+.hero-eyebrow .pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: tech-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes tech-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 225, 255, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(52, 225, 255, 0);
+  }
+}
+
+.ticker-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: 28px;
+}
+
+@media (min-width: 640px) {
+  .ticker-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.ticker-row__item {
+  background: #0d1320;
+  padding: 16px;
+}
+
+.ticker-row__num {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: var(--color-text);
+}
+
+.ticker-row__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-tech-art .court-path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .hero-tech-art .scanline {
+    animation: none;
+    opacity: 0.25;
+  }
+  .hero-eyebrow .pulse {
+    animation: none;
+  }
+}

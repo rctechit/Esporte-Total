@@ -26,6 +26,7 @@ export const createUnidadeSchema = z.object({
   horaAbertura: z.string().regex(horaRegex).optional().or(z.literal("")),
   horaFechamento: z.string().regex(horaRegex).optional().or(z.literal("")),
   ativo: z.boolean().optional(),
+  empresaId: z.string().cuid().optional(),
   modalidades: z.array(modalidadePrecoSchema).min(1, "Selecione ao menos uma modalidade"),
 });
 

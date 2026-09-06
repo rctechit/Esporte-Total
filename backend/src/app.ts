@@ -10,6 +10,9 @@ import { modalidadesRoutes } from "./routes/modalidades.routes.js";
 import { unidadesRoutes } from "./routes/unidades.routes.js";
 import { uploadsRoutes } from "./routes/uploads.routes.js";
 import { reservasRoutes } from "./routes/reservas.routes.js";
+import { empresasRoutes } from "./routes/empresas.routes.js";
+import { relatoriosRoutes } from "./routes/relatorios.routes.js";
+import { pagamentosRoutes } from "./routes/pagamentos.routes.js";
 
 export function buildApp() {
   const app = Fastify({
@@ -62,6 +65,9 @@ export function buildApp() {
   app.register(unidadesRoutes, { prefix: "/api/unidades" });
   app.register(uploadsRoutes, { prefix: "/api/uploads" });
   app.register(reservasRoutes, { prefix: "/api/reservas" });
+  app.register(empresasRoutes, { prefix: "/api/empresas" });
+  app.register(relatoriosRoutes, { prefix: "/api/relatorios" });
+  app.register(pagamentosRoutes, { prefix: "/api/pagamentos" });
 
   return app;
 }

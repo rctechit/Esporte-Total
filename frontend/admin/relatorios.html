@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatórios — Esporte Total Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body class="admin-shell">
+  <div class="admin-topbar">
+    <strong>🏆 Esporte Total — Admin</strong>
+    <nav class="admin-nav">
+      <a href="dashboard.html">Unidades</a>
+      <a href="reservas.html">Reservas</a>
+      <a href="relatorios.html" class="is-active">Relatórios</a>
+      <a href="empresas.html" data-super-admin-only hidden>Empresas</a>
+      <span class="admin-nav__nome" id="admin-nome"></span>
+      <a href="#" data-logout>Sair</a>
+    </nav>
+  </div>
+
+  <div class="admin-content">
+    <div class="toolbar">
+      <h1 class="section__title">Relatórios do seu negócio</h1>
+    </div>
+
+    <div class="stats-row" id="stats-row">
+      <div class="stat-tile">
+        <div class="stat-tile__valor">—</div>
+        <div class="stat-tile__label">Carregando...</div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-card">
+        <h3>Faturamento por unidade (reservas locadas)</h3>
+        <canvas id="chart-faturamento"></canvas>
+        <p class="state-message" id="faturamento-vazio" hidden>Nenhuma reserva locada ainda.</p>
+      </div>
+      <div class="chart-card">
+        <h3>Unidades mais solicitadas</h3>
+        <canvas id="chart-solicitadas"></canvas>
+        <p class="state-message" id="solicitadas-vazio" hidden>Nenhuma solicitação registrada ainda.</p>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Tendência de uso por dia da semana</h3>
+      <canvas id="chart-tendencia"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/admin/auth-guard.js"></script>
+  <script src="../js/admin/relatorios.js"></script>
+</body>
+</html>

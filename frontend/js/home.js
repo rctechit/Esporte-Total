@@ -42,7 +42,9 @@ async function carregarUnidadesDestaque() {
   const grid = qs("#unidades-destaque");
 
   try {
-    const resultado = await api.get("/unidades?pageSize=6");
+    const resultado = await api.get("/unidades?pageSize=50");
+
+    atualizarTicker(resultado);
 
     if (!resultado.unidades.length) {
       grid.innerHTML = '<p class="state-message">Nenhuma unidade cadastrada ainda.</p>';
@@ -50,13 +52,24 @@ async function carregarUnidadesDestaque() {
     }
 
     grid.innerHTML = "";
-    for (const unidade of resultado.unidades) {
+    for (const unidade of resultado.unidades.slice(0, 6)) {
       grid.appendChild(criarCardUnidade(unidade));
     }
   } catch (error) {
     grid.innerHTML = '<p class="state-message">Não foi possível carregar as unidades agora.</p>';
     console.error(error);
   }
+}
+
+function atualizarTicker(resultado) {
+  const tickerUnidades = qs("#ticker-unidades");
+  const tickerCidades = qs("#ticker-cidades");
+  if (!tickerUnidades || !tickerCidades) return;
+
+  tickerUnidades.textContent = String(resultado.total ?? resultado.unidades.length);
+
+  const cidades = new Set(resultado.unidades.map((u) => u.cidade).filter(Boolean));
+  tickerCidades.textContent = cidades.size ? String(cidades.size) : "—";
 }
 
 qs("#hero-search-form")?.addEventListener("submit", (event) => {

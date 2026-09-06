@@ -118,7 +118,26 @@ function coletarDadosFormulario() {
     email: qs("#email").value.trim(),
     site: qs("#site").value.trim(),
     modalidades: getModalidadesSelecionadas(),
+    ...(qs("#campo-empresa").hidden ? {} : { empresaId: qs("#empresaId").value }),
   };
+}
+
+async function carregarSeletorEmpresa(empresaIdAtual) {
+  qs("#campo-empresa").hidden = false;
+  const select = qs("#empresaId");
+  try {
+    const empresas = await api.get("/empresas");
+    select.innerHTML = "";
+    for (const empresa of empresas) {
+      const option = document.createElement("option");
+      option.value = empresa.id;
+      option.textContent = empresa.nome;
+      option.selected = empresa.id === empresaIdAtual;
+      select.appendChild(option);
+    }
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function renderFotos() {
@@ -323,6 +342,9 @@ async function init() {
     try {
       unidadeAtual = await api.get(`/unidades/admin/${unidadeId}`);
       preencherFormulario(unidadeAtual);
+      if (admin.role === "super_admin") {
+        await carregarSeletorEmpresa(unidadeAtual.empresaId);
+      }
       await carregarModalidadesComPreco(
         (unidadeAtual.modalidades || []).map((rel) => ({
           modalidadeId: rel.modalidadeId,
@@ -334,6 +356,9 @@ async function init() {
       mostrarAlerta("Unidade não encontrada.");
     }
   } else {
+    if (admin.role === "super_admin") {
+      await carregarSeletorEmpresa();
+    }
     await carregarModalidadesComPreco();
   }
 }

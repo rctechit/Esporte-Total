@@ -44,7 +44,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       const token = app.jwt.sign(
-        { sub: admin.id, email: admin.email },
+        { sub: admin.id, email: admin.email, role: admin.role, empresaId: admin.empresaId },
         { expiresIn: `${ONE_DAY_SECONDS}s` }
       );
 
@@ -53,7 +53,13 @@ export async function authRoutes(app: FastifyInstance) {
         maxAge: ONE_DAY_SECONDS,
       });
 
-      return reply.send({ id: admin.id, email: admin.email, nome: admin.nome });
+      return reply.send({
+        id: admin.id,
+        email: admin.email,
+        nome: admin.nome,
+        role: admin.role,
+        empresaId: admin.empresaId,
+      });
     }
   );
 
@@ -65,7 +71,7 @@ export async function authRoutes(app: FastifyInstance) {
   app.get("/me", { preHandler: requireAuth }, async (request, reply) => {
     const admin = await prisma.adminUser.findUnique({
       where: { id: request.user.sub },
-      select: { id: true, email: true, nome: true },
+      select: { id: true, email: true, nome: true, role: true, empresaId: true },
     });
 
     if (!admin) {

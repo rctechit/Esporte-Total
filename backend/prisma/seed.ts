@@ -34,13 +34,16 @@ async function main() {
 
   const passwordHash = await argon2.hash(adminPassword);
 
+  // O admin do seed é o operador da plataforma (super_admin): enxerga todas
+  // as empresas/unidades, e é quem cadastra as empresas (donos de quadra)
+  // depois pelo painel.
   await prisma.adminUser.upsert({
     where: { email: adminEmail },
-    update: { passwordHash, nome: adminNome },
-    create: { email: adminEmail, passwordHash, nome: adminNome },
+    update: { passwordHash, nome: adminNome, role: "super_admin" },
+    create: { email: adminEmail, passwordHash, nome: adminNome, role: "super_admin" },
   });
 
-  console.log(`Usuário admin garantido: ${adminEmail}`);
+  console.log(`Usuário admin (super_admin) garantido: ${adminEmail}`);
 }
 
 main()

@@ -10,11 +10,14 @@
 <body class="admin-shell">
   <div class="admin-topbar">
     <strong>🏆 Esporte Total — Admin</strong>
-    <div>
-      <a href="reservas.html" style="margin-right: 16px;">Reservas</a>
-      <span id="admin-nome" style="margin-right: 16px;"></span>
+    <nav class="admin-nav">
+      <a href="dashboard.html" class="is-active">Unidades</a>
+      <a href="reservas.html">Reservas</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="empresas.html" data-super-admin-only hidden>Empresas</a>
+      <span class="admin-nav__nome" id="admin-nome"></span>
       <a href="#" data-logout>Sair</a>
-    </div>
+    </nav>
   </div>
 
   <div class="admin-content">

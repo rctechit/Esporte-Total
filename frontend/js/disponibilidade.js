@@ -262,7 +262,7 @@ async function enviarSolicitacao(event) {
   submitBtn.textContent = "Enviando...";
 
   try {
-    await api.post(`/unidades/${unidade.id}/reservas`, {
+    const reserva = await api.post(`/unidades/${unidade.id}/reservas`, {
       modalidadeId,
       data: diaSelecionado,
       horarios: Array.from(horariosSelecionados),
@@ -270,22 +270,116 @@ async function enviarSolicitacao(event) {
       telefoneSolicitante: telefone,
     });
 
-    const lateral = qs("#reserva-lateral");
-    lateral.innerHTML = "";
-    const titulo = document.createElement("h2");
-    titulo.textContent = "Solicitação enviada!";
-    const texto = document.createElement("p");
-    texto.textContent =
-      "Recebemos seu pedido de reserva. Em breve entraremos em contato pelo telefone informado para combinar o pagamento e confirmar o horário.";
-    lateral.append(titulo, texto);
-
     horariosSelecionados = new Set();
     carregarDisponibilidade(diaSelecionado, { atualizarLateral: false });
+
+    if (reserva.status === "aguardando_pagamento" && reserva.pixCopiaCola) {
+      renderTelaPix(reserva);
+    } else {
+      renderConfirmacaoSemPix(reserva);
+    }
   } catch (error) {
     alert(error.message || "Não foi possível enviar sua solicitação. Tente novamente.");
     submitBtn.disabled = false;
     submitBtn.textContent = "Solicitar reserva";
   }
+}
+
+function renderConfirmacaoSemPix(reserva) {
+  const lateral = qs("#reserva-lateral");
+  lateral.innerHTML = "";
+  const titulo = document.createElement("h2");
+  titulo.textContent = "Solicitação enviada!";
+  const texto = document.createElement("p");
+  texto.textContent = reserva.avisoPagamento
+    ? reserva.avisoPagamento
+    : "Recebemos seu pedido de reserva. Em breve entraremos em contato pelo telefone informado para combinar o pagamento e confirmar o horário.";
+  lateral.append(titulo, texto);
+}
+
+function renderTelaPix(reserva) {
+  const lateral = qs("#reserva-lateral");
+  lateral.innerHTML = "";
+
+  const titulo = document.createElement("h2");
+  titulo.textContent = "Pague o sinal para confirmar";
+
+  const valor = document.createElement("p");
+  valor.innerHTML = `Sinal de <strong>${reserva.valorSinal.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  })}</strong> via Pix. Assim que o pagamento cair, sua solicitação vai direto para o dono aprovar.`;
+
+  const card = document.createElement("div");
+  card.className = "pix-card";
+
+  if (reserva.pixQrCode) {
+    const img = document.createElement("img");
+    img.src = `data:image/png;base64,${reserva.pixQrCode}`;
+    img.alt = "QR Code do Pix";
+    card.appendChild(img);
+  }
+
+  const copiaCola = document.createElement("div");
+  copiaCola.className = "pix-copia-cola";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.readOnly = true;
+  input.value = reserva.pixCopiaCola;
+  const copiarBtn = document.createElement("button");
+  copiarBtn.type = "button";
+  copiarBtn.className = "btn btn--outline btn--sm";
+  copiarBtn.textContent = "Copiar";
+  copiarBtn.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(reserva.pixCopiaCola);
+    copiarBtn.textContent = "Copiado!";
+    setTimeout(() => (copiarBtn.textContent = "Copiar"), 2000);
+  });
+  copiaCola.append(input, copiarBtn);
+  card.appendChild(copiaCola);
+
+  const statusTexto = document.createElement("p");
+  statusTexto.id = "pix-status-texto";
+  statusTexto.className = "unidade-card__local";
+  statusTexto.style.marginTop = "14px";
+  statusTexto.textContent = "Aguardando confirmação do pagamento...";
+  card.appendChild(statusTexto);
+
+  lateral.append(titulo, valor, card);
+  monitorarPagamento(reserva.id);
+}
+
+async function monitorarPagamento(reservaId, tentativas = 0) {
+  const statusTexto = qs("#pix-status-texto");
+  if (!statusTexto) return; // usuário navegou para outra tela
+
+  if (tentativas > 100) {
+    statusTexto.textContent =
+      "Ainda não recebemos a confirmação. Se você já pagou, aguarde mais um pouco — a solicitação será liberada automaticamente.";
+    return;
+  }
+
+  try {
+    const resultado = await api.get(`/pagamentos/reservas/${reservaId}/status`);
+    if (resultado.status === "pendente") {
+      const lateral = qs("#reserva-lateral");
+      lateral.innerHTML = "";
+      const titulo = document.createElement("h2");
+      titulo.textContent = "Pagamento confirmado!";
+      const texto = document.createElement("p");
+      texto.textContent = "Sua solicitação foi enviada ao dono da unidade para aprovação.";
+      lateral.append(titulo, texto);
+      return;
+    }
+    if (resultado.status === "cancelada") {
+      statusTexto.textContent = "O pagamento não foi confirmado e a solicitação foi cancelada.";
+      return;
+    }
+  } catch {
+    // tenta de novo no próximo ciclo
+  }
+
+  setTimeout(() => monitorarPagamento(reservaId, tentativas + 1), 3000);
 }
 
 async function init() {

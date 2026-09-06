@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Esporte Total — Encontre quadras, clubes e escolas esportivas</title>
   <meta name="description" content="Hub esportivo com unidades de futebol, tênis, beach tênis e paraquedismo perto de você." />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/tech-theme.css" />
 </head>
-<body>
+<body class="tech-theme">
   <header class="site-header">
     <nav class="navbar">
       <a href="index.html" class="navbar__brand">
@@ -26,7 +28,8 @@
   <main>
     <section class="hero">
       <div class="container">
-        <h1 class="hero__title">Encontre a unidade esportiva ideal para você</h1>
+        <div class="hero-eyebrow"><span class="pulse"></span>Hub esportivo · disponibilidade em tempo real</div>
+        <h1 class="hero__title">Sua quadra. Seu horário. Na grade, agora.</h1>
         <p class="hero__subtitle">Futebol, tênis, beach tênis e paraquedismo — tudo em um só lugar, organizado por cidade e modalidade.</p>
 
         <form class="hero__search" id="hero-search-form">
@@ -36,6 +39,41 @@
           </select>
           <button type="submit">Buscar</button>
         </form>
+
+        <div class="hero-tech-art" aria-hidden="true">
+          <div class="scanline"></div>
+          <svg viewBox="0 0 400 400">
+            <rect class="court-path" x="30" y="120" width="200" height="130" rx="2" />
+            <circle class="court-path d2" cx="130" cy="185" r="26" />
+            <line class="court-path d2" x1="130" y1="120" x2="130" y2="250" />
+            <rect class="court-path court-path--dim d3" x="150" y="40" width="220" height="110" rx="2" />
+            <line class="court-path court-path--dim d3" x1="260" y1="40" x2="260" y2="150" />
+            <path class="court-path d3" d="M 60 300 Q 160 250 260 300" />
+            <path class="court-path court-path--dim d4" d="M 230 300 A 70 45 0 0 1 370 300" />
+            <line class="court-path court-path--dim d4" x1="240" y1="303" x2="300" y2="345" />
+            <line class="court-path court-path--dim d4" x1="300" y1="308" x2="300" y2="345" />
+            <line class="court-path court-path--dim d4" x1="360" y1="303" x2="300" y2="345" />
+          </svg>
+        </div>
+
+        <div class="ticker-row">
+          <div class="ticker-row__item">
+            <div class="ticker-row__num" id="ticker-unidades">—</div>
+            <div class="ticker-row__label">Unidades cadastradas</div>
+          </div>
+          <div class="ticker-row__item">
+            <div class="ticker-row__num">4</div>
+            <div class="ticker-row__label">Modalidades</div>
+          </div>
+          <div class="ticker-row__item">
+            <div class="ticker-row__num" id="ticker-cidades">—</div>
+            <div class="ticker-row__label">Cidades atendidas</div>
+          </div>
+          <div class="ticker-row__item">
+            <div class="ticker-row__num">Pix</div>
+            <div class="ticker-row__label">Sinal de reserva</div>
+          </div>
+        </div>
       </div>
     </section>
 

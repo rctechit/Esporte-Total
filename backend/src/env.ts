@@ -11,6 +11,8 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional().default(""),
   CLOUDINARY_API_KEY: z.string().optional().default(""),
   CLOUDINARY_API_SECRET: z.string().optional().default(""),
+  MERCADOPAGO_ACCESS_TOKEN: z.string().optional().default(""),
+  PUBLIC_API_URL: z.string().optional().default(""),
 });
 
 const parsed = envSchema.safeParse(process.env);

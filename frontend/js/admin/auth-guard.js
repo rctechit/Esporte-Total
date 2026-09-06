@@ -3,6 +3,7 @@ let currentAdmin = null;
 async function requireAdmin() {
   try {
     currentAdmin = await api.get("/auth/me");
+    aplicarVisibilidadePorPapel();
     return currentAdmin;
   } catch (error) {
     window.location.href = "login.html";
@@ -16,6 +17,13 @@ async function logoutAdmin() {
   } finally {
     window.location.href = "login.html";
   }
+}
+
+function aplicarVisibilidadePorPapel() {
+  const isSuperAdmin = currentAdmin?.role === "super_admin";
+  qsa("[data-super-admin-only]").forEach((el) => {
+    el.hidden = !isSuperAdmin;
+  });
 }
 
 function setupAdminTopbar() {

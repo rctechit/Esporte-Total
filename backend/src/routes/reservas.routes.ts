@@ -1,19 +1,26 @@
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../lib/prisma.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, empresaFiltro } from "../middleware/requireAuth.js";
 import { updateReservaStatusSchema } from "../schemas/unidade.schema.js";
 
 const reservaInclude = {
-  unidade: { select: { id: true, nome: true, slug: true } },
+  unidade: { select: { id: true, nome: true, slug: true, empresaId: true } },
   modalidade: { select: { id: true, nome: true } },
 };
 
 export async function reservasRoutes(app: FastifyInstance) {
   app.get("/", { preHandler: requireAuth }, async (request, reply) => {
     const { status } = request.query as { status?: string };
+    const empresaId = empresaFiltro(request);
 
     const reservas = await prisma.reserva.findMany({
-      where: status ? { status } : undefined,
+      where: {
+        ...(status ? { status } : {}),
+        // aguardando_pagamento so interessa ao cliente que esta pagando -
+        // o dono da quadra so ve a reserva depois que o Pix confirma.
+        ...(status ? {} : { status: { not: "aguardando_pagamento" } }),
+        ...(empresaId ? { unidade: { empresaId } } : {}),
+      },
       include: reservaInclude,
       orderBy: [{ data: "asc" }, { createdAt: "desc" }],
     });
@@ -23,13 +30,17 @@ export async function reservasRoutes(app: FastifyInstance) {
 
   app.put("/:id", { preHandler: requireAuth }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const empresaId = empresaFiltro(request);
     const parseResult = updateReservaStatusSchema.safeParse(request.body);
     if (!parseResult.success) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
-    const existing = await prisma.reserva.findUnique({ where: { id } });
-    if (!existing) {
+    const existing = await prisma.reserva.findUnique({
+      where: { id },
+      include: { unidade: { select: { empresaId: true } } },
+    });
+    if (!existing || (empresaId && existing.unidade.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Reserva não encontrada." });
     }
 

@@ -10,10 +10,11 @@
 <body class="admin-shell">
   <div class="admin-topbar">
     <strong>🏆 Esporte Total — Admin</strong>
-    <div>
-      <a href="dashboard.html" style="margin-right: 16px;">← Voltar</a>
+    <nav class="admin-nav">
+      <a href="dashboard.html">← Unidades</a>
+      <span class="admin-nav__nome" id="admin-nome"></span>
       <a href="#" data-logout>Sair</a>
-    </div>
+    </nav>
   </div>
 
   <div class="admin-content">
@@ -23,6 +24,10 @@
     <form class="form-stack" id="unidade-form">
       <div class="info-card">
         <h2>Dados básicos</h2>
+        <div class="form-field" id="campo-empresa" hidden>
+          <label for="empresaId">Empresa dona desta unidade *</label>
+          <select id="empresaId"></select>
+        </div>
         <div class="form-field">
           <label for="nome">Nome da unidade *</label>
           <input type="text" id="nome" required maxlength="120" />

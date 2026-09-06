@@ -7,14 +7,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Empresa {
+  id        String      @id @default(cuid())
+  nome      String
+  email     String?
+  telefone  String?
+  ativa     Boolean     @default(true)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  usuarios  AdminUser[]
+  unidades  Unidade[]
+
+  @@map("empresas")
+}
+
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
   nome         String
+  role         String   @default("owner")
+  empresaId    String?
+  empresa      Empresa? @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  @@index([empresaId])
   @@map("admin_users")
 }
 
@@ -34,6 +52,8 @@ model Modalidade {
 
 model Unidade {
   id                   String               @id @default(cuid())
+  empresaId            String
+  empresa              Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome                 String
   slug                 String               @unique
   descricao            String?
@@ -63,6 +83,7 @@ model Unidade {
   @@index([cidade])
   @@index([estado])
   @@index([ativo])
+  @@index([empresaId])
   @@map("unidades")
 }
 
@@ -86,13 +107,18 @@ model Reserva {
   nomeSolicitante     String
   telefoneSolicitante String
   valorTotal          Float?
-  status              String     @default("pendente")
+  valorSinal          Float?
+  status              String     @default("aguardando_pagamento")
+  pixPaymentId        String?
+  pixQrCode           String?
+  pixCopiaCola        String?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   unidade             Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
   modalidade          Modalidade @relation(fields: [modalidadeId], references: [id])
 
   @@index([unidadeId, data])
+  @@index([pixPaymentId])
   @@map("reservas")
 }
 

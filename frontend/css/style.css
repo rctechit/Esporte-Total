@@ -21,6 +21,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -604,6 +608,30 @@ p {
   color: #fff;
 }
 
+.admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.admin-nav a {
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.admin-nav a.is-active,
+.admin-nav a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.admin-nav__nome {
+  opacity: 0.8;
+  font-size: 0.85rem;
+}
+
 .admin-content {
   flex: 1;
   padding: 24px 16px;
@@ -815,6 +843,156 @@ th, td {
   justify-content: space-between;
   padding: 6px 0;
   font-size: 0.9rem;
+}
+
+/* ---------- Status de reserva ---------- */
+
+.badge--aguardando {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge--confirmada {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+}
+
+.badge--cancelada {
+  background: #fee2e2;
+  color: var(--color-danger);
+}
+
+/* ---------- Agenda do dono (3 estados) ---------- */
+
+.agenda-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+
+.agenda-slot {
+  border-radius: var(--radius-sm);
+  padding: 12px 8px;
+  text-align: center;
+  border: 1px solid var(--color-border);
+}
+
+.agenda-slot__hora {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.agenda-slot__status {
+  font-size: 0.7rem;
+  margin-top: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.agenda-slot--disponivel {
+  background: var(--color-primary-light);
+  border-color: #bbf7d0;
+  color: var(--color-primary-dark);
+}
+
+.agenda-slot--aguardando_aprovacao {
+  background: #fef3c7;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.agenda-slot--locado {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #fff;
+}
+
+/* ---------- Relatórios ---------- */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.stat-tile__valor {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+.stat-tile__label {
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.chart-card h3 {
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+}
+
+.chart-card canvas {
+  max-height: 320px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 860px) {
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Pix (tela pública de agendamento) ---------- */
+
+.pix-card {
+  text-align: center;
+}
+
+.pix-card img {
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.pix-copia-cola {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pix-copia-cola input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  font-family: monospace;
+  font-size: 0.78rem;
+  background: #f8fafc;
 }
 
 /* ---------- Footer ---------- */

@@ -10,52 +10,86 @@
 <body class="admin-shell">
   <div class="admin-topbar">
     <strong>🏆 Esporte Total — Admin</strong>
-    <div>
-      <a href="dashboard.html" style="margin-right: 16px;">← Unidades</a>
+    <nav class="admin-nav">
+      <a href="dashboard.html">Unidades</a>
+      <a href="reservas.html" class="is-active">Reservas</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="empresas.html" data-super-admin-only hidden>Empresas</a>
+      <span class="admin-nav__nome" id="admin-nome"></span>
       <a href="#" data-logout>Sair</a>
-    </div>
+    </nav>
   </div>
 
   <div class="admin-content">
     <div id="reservas-alert"></div>
 
-    <div class="toolbar">
-      <h1 class="section__title">Solicitações de reserva</h1>
-      <div class="form-field" style="min-width:200px;">
-        <label for="filtro-status">Status</label>
-        <select id="filtro-status">
-          <option value="">Todas</option>
-          <option value="pendente">Pendentes</option>
-          <option value="confirmada">Confirmadas</option>
-          <option value="cancelada">Canceladas</option>
-        </select>
+    <section class="section--tight">
+      <div class="toolbar">
+        <h2 class="section__title">Agenda por unidade</h2>
       </div>
-    </div>
+      <div class="filtros">
+        <div class="form-field">
+          <label for="agenda-unidade">Unidade</label>
+          <select id="agenda-unidade"></select>
+        </div>
+        <div class="form-field">
+          <label for="agenda-modalidade">Modalidade</label>
+          <select id="agenda-modalidade"></select>
+        </div>
+        <div class="form-field">
+          <label for="agenda-data">Dia</label>
+          <input type="date" id="agenda-data" />
+        </div>
+      </div>
+      <div class="agenda-grid" id="agenda-grid">
+        <p class="state-message">Selecione uma unidade para ver a agenda do dia.</p>
+      </div>
+      <div class="badge-list" style="margin-top:14px;">
+        <span class="badge badge--confirmada">Disponível</span>
+        <span class="badge badge--aguardando">Aguardando aprovação</span>
+        <span class="badge" style="background:#1f2937; color:#fff;">Locado</span>
+      </div>
+    </section>
 
-    <p class="unidade-card__local">
-      O pagamento via Pix ainda não é automático — combine com o cliente pelo telefone informado e confirme aqui manualmente.
-    </p>
+    <section class="section--tight" style="padding-top: 12px;">
+      <div class="toolbar">
+        <h2 class="section__title">Solicitações de reserva</h2>
+        <div class="form-field" style="min-width:220px;">
+          <label for="filtro-status">Status</label>
+          <select id="filtro-status">
+            <option value="">Todas</option>
+            <option value="pendente">Aguardando aprovação</option>
+            <option value="confirmada">Locado</option>
+            <option value="cancelada">Canceladas</option>
+          </select>
+        </div>
+      </div>
 
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Unidade</th>
-            <th>Modalidade</th>
-            <th>Data</th>
-            <th>Horários</th>
-            <th>Cliente</th>
-            <th>Telefone</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="reservas-tbody">
-          <tr><td colspan="9">Carregando...</td></tr>
-        </tbody>
-      </table>
-    </div>
+      <p class="unidade-card__local">
+        Assim que o Pix do sinal for confirmado pelo cliente, a solicitação aparece aqui como "Aguardando aprovação".
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Unidade</th>
+              <th>Modalidade</th>
+              <th>Data</th>
+              <th>Horários</th>
+              <th>Cliente</th>
+              <th>Telefone</th>
+              <th>Valor</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="reservas-tbody">
+            <tr><td colspan="9">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <script src="../js/config.js"></script>
