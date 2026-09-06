@@ -219,7 +219,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const { modalidades, empresaId: _empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
+    const { modalidades, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
 
     if (modalidades) {
       const modalidadesExistentes = await prisma.modalidade.count({
@@ -227,6 +227,15 @@ export async function unidadesRoutes(app: FastifyInstance) {
       });
       if (modalidadesExistentes !== modalidades.length) {
         return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
+      }
+    }
+
+    // Só super_admin pode reatribuir a unidade a outra empresa; um dono comum
+    // nao envia esse campo (o select fica oculto pra ele no formulario).
+    if (empresaIdBody && request.user.role === "super_admin") {
+      const empresa = await prisma.empresa.findUnique({ where: { id: empresaIdBody } });
+      if (!empresa) {
+        return reply.code(400).send({ error: "Empresa informada não existe." });
       }
     }
 
@@ -259,6 +268,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
         where: { id },
         data: {
           ...rest,
+          ...(empresaIdBody && request.user.role === "super_admin" ? { empresaId: empresaIdBody } : {}),
           ...(geo ? { latitude: geo.latitude, longitude: geo.longitude } : {}),
           ...(modalidades
             ? {
