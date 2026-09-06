@@ -90,6 +90,88 @@ body.tech-theme .unidade-card__local {
   font-family: var(--font-mono);
 }
 
+/* ---------- Admin (formulários, tabelas, relatórios) ---------- */
+
+body.tech-theme input:not([type="checkbox"]):not([type="radio"]),
+body.tech-theme select,
+body.tech-theme textarea {
+  background: #0f1520;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+body.tech-theme input::placeholder,
+body.tech-theme textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+body.tech-theme .btn--primary {
+  color: #031017;
+}
+
+body.tech-theme .admin-topbar {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+
+body.tech-theme .admin-topbar a,
+body.tech-theme .admin-topbar button,
+body.tech-theme .admin-topbar strong {
+  color: var(--color-text);
+}
+
+body.tech-theme .admin-nav a.is-active,
+body.tech-theme .admin-nav a:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+body.tech-theme .login-shell {
+  background: radial-gradient(circle at 15% 20%, #123244 0%, #0a0e17 55%);
+}
+
+body.tech-theme thead {
+  background: #0f1520;
+}
+
+body.tech-theme .badge--inativo,
+body.tech-theme .badge--cancelada {
+  background: rgba(255, 107, 107, 0.14);
+  color: var(--color-danger);
+}
+
+body.tech-theme .badge--aguardando {
+  background: rgba(242, 183, 5, 0.16);
+  color: var(--color-accent);
+}
+
+body.tech-theme .alert--error {
+  background: rgba(255, 107, 107, 0.14);
+  color: var(--color-danger);
+  border-color: rgba(255, 107, 107, 0.35);
+}
+
+body.tech-theme .alert--success {
+  background: var(--color-primary-light);
+  color: var(--color-primary-dark);
+  border-color: rgba(52, 225, 255, 0.35);
+}
+
+body.tech-theme .agenda-slot--disponivel {
+  border-color: rgba(52, 225, 255, 0.35);
+}
+
+body.tech-theme .agenda-slot--aguardando_aprovacao {
+  background: rgba(242, 183, 5, 0.16);
+  border-color: rgba(242, 183, 5, 0.35);
+  color: var(--color-accent);
+}
+
+body.tech-theme .pix-copia-cola input {
+  background: #0f1520;
+}
+
 /* ---------- Hero animado (só na home) ---------- */
 
 .hero-tech-art {

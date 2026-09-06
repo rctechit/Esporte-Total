@@ -2,6 +2,11 @@ function formatarMoeda(valor) {
   return valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+if (typeof Chart !== "undefined") {
+  Chart.defaults.color = "#8793a6";
+  Chart.defaults.borderColor = "rgba(255, 255, 255, 0.08)";
+}
+
 function renderStats(resumo) {
   const row = qs("#stats-row");
   row.innerHTML = "";
@@ -39,7 +44,7 @@ function renderChartFaturamento(dados) {
         {
           label: "Faturamento (R$)",
           data: dados.map((d) => d.total),
-          backgroundColor: "#16a34a",
+          backgroundColor: "#34e1ff",
           borderRadius: 6,
         },
       ],
@@ -65,7 +70,7 @@ function renderChartSolicitadas(dados) {
         {
           label: "Reservas",
           data: dados.map((d) => d.totalReservas),
-          backgroundColor: "#f97316",
+          backgroundColor: "#f2b705",
           borderRadius: 6,
         },
       ],
@@ -88,8 +93,8 @@ function renderChartTendencia(dados) {
         {
           label: "Reservas",
           data: dados.map((d) => d.total),
-          borderColor: "#16a34a",
-          backgroundColor: "rgba(22, 163, 74, 0.15)",
+          borderColor: "#34e1ff",
+          backgroundColor: "rgba(52, 225, 255, 0.15)",
           fill: true,
           tension: 0.3,
           pointRadius: 4,
