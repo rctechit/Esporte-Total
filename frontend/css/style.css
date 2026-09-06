@@ -949,6 +949,76 @@ th, td {
   font-size: 1.05rem;
 }
 
+.chart-card .card-sub {
+  margin: -10px 0 16px;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.heatmap-row__label {
+  width: 34px;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  text-align: right;
+  padding-right: 4px;
+}
+
+.heatmap-cell {
+  width: 30px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  background: var(--color-border);
+}
+
+.heatmap-hours {
+  display: flex;
+  gap: 3px;
+  padding-left: 38px;
+  margin-top: 4px;
+}
+
+.heatmap-hours span {
+  width: 30px;
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.heatmap-legenda {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.heatmap-legenda .swatches {
+  display: flex;
+}
+
+.heatmap-legenda .swatches div {
+  width: 20px;
+  height: 10px;
+}
+
 .chart-card canvas {
   max-height: 320px;
 }

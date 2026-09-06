@@ -34,6 +34,12 @@
       </div>
     </div>
 
+    <div class="chart-card">
+      <h3>Evolução do faturamento (últimos 6 meses)</h3>
+      <canvas id="chart-evolucao"></canvas>
+      <p class="state-message" id="evolucao-vazio" hidden>Ainda não há faturamento suficiente para mostrar a evolução.</p>
+    </div>
+
     <div class="chart-grid">
       <div class="chart-card">
         <h3>Faturamento por unidade (reservas locadas)</h3>
@@ -45,6 +51,13 @@
         <canvas id="chart-solicitadas"></canvas>
         <p class="state-message" id="solicitadas-vazio" hidden>Nenhuma solicitação registrada ainda.</p>
       </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Ocupação da grade por horário</h3>
+      <p class="card-sub">Quantas vezes cada horário foi solicitado (aguardando aprovação ou locado), por dia da semana — ajuda a achar os horários de pico e os espaços vazios na agenda.</p>
+      <div id="heatmap-horarios"></div>
+      <p class="state-message" id="heatmap-vazio" hidden>Ainda não há reservas suficientes para montar o mapa de horários.</p>
     </div>
 
     <div class="chart-card">
