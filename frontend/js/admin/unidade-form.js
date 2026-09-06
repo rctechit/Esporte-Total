@@ -1,6 +1,8 @@
 const params = new URLSearchParams(window.location.search);
 const unidadeId = params.get("id");
 let unidadeAtual = null;
+let cloudinaryEnabled = false;
+let fotosPendentes = []; // fotos já enviadas ao Cloudinary aguardando a unidade ser criada
 
 function mostrarAlerta(mensagem, tipo = "error") {
   const box = qs("#form-alert");
@@ -77,10 +79,11 @@ function coletarDadosFormulario() {
   };
 }
 
-function renderFotos(fotos = []) {
+function renderFotos() {
   const lista = qs("#foto-list");
   lista.innerHTML = "";
-  for (const foto of fotos) {
+
+  for (const foto of unidadeAtual?.fotos || []) {
     const item = document.createElement("div");
     item.className = "foto-item";
 
@@ -92,22 +95,54 @@ function renderFotos(fotos = []) {
     removerBtn.type = "button";
     removerBtn.textContent = "×";
     removerBtn.title = "Remover foto";
-    removerBtn.addEventListener("click", () => removerFoto(foto.id));
+    removerBtn.addEventListener("click", () => removerFotoSalva(foto.id));
 
     item.append(img, removerBtn);
     lista.appendChild(item);
   }
+
+  fotosPendentes.forEach((foto, index) => {
+    const item = document.createElement("div");
+    item.className = "foto-item";
+    item.style.opacity = "0.85";
+
+    const img = document.createElement("img");
+    img.src = foto.url;
+    img.alt = "Foto pendente (será salva junto com a unidade)";
+
+    const removerBtn = document.createElement("button");
+    removerBtn.type = "button";
+    removerBtn.textContent = "×";
+    removerBtn.title = "Remover foto pendente";
+    removerBtn.addEventListener("click", () => {
+      fotosPendentes.splice(index, 1);
+      renderFotos();
+    });
+
+    item.append(img, removerBtn);
+    lista.appendChild(item);
+  });
 }
 
-async function removerFoto(fotoId) {
+async function removerFotoSalva(fotoId) {
   if (!confirm("Remover esta foto?")) return;
   try {
     await api.delete(`/unidades/${unidadeAtual.id}/fotos/${fotoId}`);
     unidadeAtual.fotos = unidadeAtual.fotos.filter((f) => f.id !== fotoId);
-    renderFotos(unidadeAtual.fotos);
+    renderFotos();
   } catch (error) {
     mostrarAlerta(error.message || "Não foi possível remover a foto.");
   }
+}
+
+async function adicionarFoto(url, publicId) {
+  if (unidadeAtual?.id) {
+    const foto = await api.post(`/unidades/${unidadeAtual.id}/fotos`, { url, publicId });
+    unidadeAtual.fotos = [...(unidadeAtual.fotos || []), foto];
+  } else {
+    fotosPendentes.push({ url, publicId });
+  }
+  renderFotos();
 }
 
 qs("#adicionar-foto-btn").addEventListener("click", async () => {
@@ -116,28 +151,86 @@ qs("#adicionar-foto-btn").addEventListener("click", async () => {
   if (!url) return;
 
   try {
-    const foto = await api.post(`/unidades/${unidadeAtual.id}/fotos`, { url });
-    unidadeAtual.fotos = [...(unidadeAtual.fotos || []), foto];
-    renderFotos(unidadeAtual.fotos);
+    await adicionarFoto(url, undefined);
     input.value = "";
   } catch (error) {
     mostrarAlerta(error.message || "Não foi possível adicionar a foto.");
   }
 });
 
+async function enviarArquivoParaCloudinary(file, assinatura) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("api_key", assinatura.apiKey);
+  formData.append("timestamp", String(assinatura.timestamp));
+  formData.append("signature", assinatura.signature);
+  formData.append("folder", assinatura.folder);
+
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${assinatura.cloudName}/image/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Falha ao enviar imagem para o Cloudinary.");
+  }
+
+  return response.json();
+}
+
+qs("#foto-arquivo").addEventListener("change", async (event) => {
+  const arquivos = Array.from(event.target.files || []);
+  if (!arquivos.length) return;
+
+  const statusEl = qs("#upload-status");
+
+  for (const file of arquivos) {
+    statusEl.textContent = `Enviando ${file.name}...`;
+    try {
+      const assinatura = await api.post("/uploads/sign");
+      const resultado = await enviarArquivoParaCloudinary(file, assinatura);
+      await adicionarFoto(resultado.secure_url, resultado.public_id);
+    } catch (error) {
+      mostrarAlerta(error.message || `Não foi possível enviar ${file.name}.`);
+    }
+  }
+
+  statusEl.textContent = "";
+  event.target.value = "";
+});
+
 async function configurarSecaoFotos() {
-  if (!unidadeAtual) return;
-  qs("#fotos-card").hidden = false;
-  renderFotos(unidadeAtual.fotos || []);
+  renderFotos();
 
   try {
     const status = await api.get("/uploads/status");
-    qs("#fotos-cloudinary-status").textContent = status.cloudinaryEnabled
-      ? "Cole o link da imagem (upload direto via Cloudinary em breve)."
-      : "Upload de imagens ainda não configurado — cole o link (URL) de uma imagem já publicada.";
+    cloudinaryEnabled = status.cloudinaryEnabled;
   } catch {
-    qs("#fotos-cloudinary-status").textContent = "Cole o link (URL) de uma imagem já publicada.";
+    cloudinaryEnabled = false;
   }
+
+  qs("#upload-arquivo-wrap").hidden = !cloudinaryEnabled;
+  qs("#fotos-cloudinary-status").textContent = cloudinaryEnabled
+    ? "Selecione uma ou mais imagens do seu computador, ou cole o link de uma imagem já publicada."
+    : "Upload direto não configurado — cole o link (URL) de uma imagem já publicada.";
+}
+
+async function enviarFotosPendentes() {
+  if (!fotosPendentes.length) return;
+
+  const pendentes = [...fotosPendentes];
+  fotosPendentes = [];
+
+  for (const foto of pendentes) {
+    try {
+      const salva = await api.post(`/unidades/${unidadeAtual.id}/fotos`, foto);
+      unidadeAtual.fotos = [...(unidadeAtual.fotos || []), salva];
+    } catch (error) {
+      mostrarAlerta(error.message || "Não foi possível salvar uma das fotos.");
+    }
+  }
+
+  renderFotos();
 }
 
 qs("#unidade-form").addEventListener("submit", async (event) => {
@@ -159,15 +252,15 @@ qs("#unidade-form").addEventListener("submit", async (event) => {
     if (unidadeAtual) {
       unidadeAtual = await api.put(`/unidades/${unidadeAtual.id}`, dados);
       mostrarAlerta("Unidade atualizada com sucesso.", "success");
-      configurarSecaoFotos();
     } else {
       unidadeAtual = await api.post("/unidades", dados);
-      mostrarAlerta("Unidade criada com sucesso. Agora você já pode adicionar fotos.", "success");
+      await enviarFotosPendentes();
+      mostrarAlerta("Unidade criada com sucesso.", "success");
       window.history.replaceState({}, "", `unidade-form.html?id=${unidadeAtual.id}`);
       qs("#form-title").textContent = "Editar unidade";
       qs("#page-title").textContent = "Editar unidade — Esporte Total";
-      configurarSecaoFotos();
     }
+    renderFotos();
   } catch (error) {
     mostrarAlerta(error.message || "Não foi possível salvar a unidade.");
   } finally {
@@ -180,6 +273,8 @@ async function init() {
   const admin = await requireAdmin();
   if (!admin) return;
 
+  await configurarSecaoFotos();
+
   if (unidadeId) {
     qs("#form-title").textContent = "Editar unidade";
     qs("#page-title").textContent = "Editar unidade — Esporte Total";
@@ -189,7 +284,7 @@ async function init() {
       await carregarCheckboxesModalidades(
         (unidadeAtual.modalidades || []).map((rel) => rel.modalidadeId)
       );
-      configurarSecaoFotos();
+      renderFotos();
     } catch (error) {
       mostrarAlerta("Unidade não encontrada.");
     }

@@ -105,13 +105,20 @@
         </div>
       </div>
 
-      <div class="info-card" id="fotos-card" hidden>
+      <div class="info-card" id="fotos-card">
         <h2>Fotos</h2>
         <p id="fotos-cloudinary-status" class="unidade-card__local"></p>
-        <div style="display:flex; gap:8px;">
+
+        <div id="upload-arquivo-wrap" hidden style="margin-bottom:10px;">
+          <input type="file" id="foto-arquivo" accept="image/*" multiple />
+          <p id="upload-status" class="unidade-card__local" style="margin:6px 0 0;"></p>
+        </div>
+
+        <div id="upload-url-wrap" style="display:flex; gap:8px;">
           <input type="url" id="nova-foto-url" placeholder="https://link-da-foto.jpg" style="flex:1; padding:10px 12px; border-radius:8px; border:1px solid var(--color-border);" />
           <button type="button" class="btn btn--outline" id="adicionar-foto-btn">Adicionar</button>
         </div>
+
         <div class="foto-list" id="foto-list"></div>
       </div>
 
