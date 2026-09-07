@@ -20,17 +20,24 @@ export async function relatoriosRoutes(app: FastifyInstance) {
     const unidadeIds = unidades.map((u) => u.id);
     const nomesPorUnidade = new Map(unidades.map((u) => [u.id, u.nome]));
 
+    const quadras = await prisma.quadra.findMany({
+      where: { unidadeId: { in: unidadeIds } },
+      select: { id: true, nome: true, unidadeId: true },
+    });
+    const quadraIds = quadras.map((q) => q.id);
+    const quadrasPorId = new Map(quadras.map((q) => [q.id, q]));
+
     const reservas = await prisma.reserva.findMany({
       where: {
-        unidadeId: { in: unidadeIds },
+        quadraId: { in: quadraIds },
         status: { not: "aguardando_pagamento" },
       },
-      select: { unidadeId: true, valorTotal: true, status: true, data: true, horarios: true },
+      select: { quadraId: true, valorTotal: true, status: true, data: true, horarios: true },
     });
 
     let faturamentoTotal = 0;
-    const faturamentoPorUnidadeMap = new Map<string, number>();
-    const contagemPorUnidadeMap = new Map<string, number>();
+    const faturamentoPorQuadraMap = new Map<string, number>();
+    const contagemPorQuadraMap = new Map<string, number>();
     const contagemPorDiaSemana = new Array(7).fill(0);
 
     // Evolução mensal: faturamento locado dos últimos 6 meses (incluindo o atual).
@@ -51,7 +58,7 @@ export async function relatoriosRoutes(app: FastifyInstance) {
 
     for (const reserva of reservas) {
       if (reserva.status !== "cancelada") {
-        contagemPorUnidadeMap.set(reserva.unidadeId, (contagemPorUnidadeMap.get(reserva.unidadeId) || 0) + 1);
+        contagemPorQuadraMap.set(reserva.quadraId, (contagemPorQuadraMap.get(reserva.quadraId) || 0) + 1);
         const diaSemana = reserva.data.getUTCDay();
         contagemPorDiaSemana[diaSemana] += 1;
 
@@ -65,14 +72,25 @@ export async function relatoriosRoutes(app: FastifyInstance) {
 
       if (reserva.status === "confirmada" && reserva.valorTotal) {
         faturamentoTotal += reserva.valorTotal;
-        faturamentoPorUnidadeMap.set(
-          reserva.unidadeId,
-          (faturamentoPorUnidadeMap.get(reserva.unidadeId) || 0) + reserva.valorTotal
+        faturamentoPorQuadraMap.set(
+          reserva.quadraId,
+          (faturamentoPorQuadraMap.get(reserva.quadraId) || 0) + reserva.valorTotal
         );
 
         const chaveMes = chaveMs(reserva.data.getUTCFullYear(), reserva.data.getUTCMonth() + 1);
         faturamentoPorMesMap.set(chaveMes, (faturamentoPorMesMap.get(chaveMes) || 0) + reserva.valorTotal);
       }
+    }
+
+    // Agrega por unidade (soma das quadras dela) para manter os graficos que
+    // ja existiam antes das quadras.
+    const faturamentoPorUnidadeMap = new Map<string, number>();
+    const contagemPorUnidadeMap = new Map<string, number>();
+    for (const quadra of quadras) {
+      const faturamentoQuadra = faturamentoPorQuadraMap.get(quadra.id) || 0;
+      const contagemQuadra = contagemPorQuadraMap.get(quadra.id) || 0;
+      faturamentoPorUnidadeMap.set(quadra.unidadeId, (faturamentoPorUnidadeMap.get(quadra.unidadeId) || 0) + faturamentoQuadra);
+      contagemPorUnidadeMap.set(quadra.unidadeId, (contagemPorUnidadeMap.get(quadra.unidadeId) || 0) + contagemQuadra);
     }
 
     const faturamentoPorUnidade = unidadeIds
@@ -93,6 +111,23 @@ export async function relatoriosRoutes(app: FastifyInstance) {
       .filter((u) => u.totalReservas > 0)
       .sort((a, b) => b.totalReservas - a.totalReservas)
       .slice(0, 8);
+
+    // Indicador por quadra: mostra, dentro de cada unidade, quais quadras
+    // especificas estao rendendo mais ou tendo mais demanda - 2 quadras da
+    // mesma unidade podem ter desempenho bem diferente.
+    const desempenhoPorQuadra = quadraIds
+      .map((id) => {
+        const quadra = quadrasPorId.get(id)!;
+        return {
+          quadraId: id,
+          quadraNome: quadra.nome,
+          unidadeNome: nomesPorUnidade.get(quadra.unidadeId) || "",
+          totalReservas: contagemPorQuadraMap.get(id) || 0,
+          faturamento: Math.round((faturamentoPorQuadraMap.get(id) || 0) * 100) / 100,
+        };
+      })
+      .filter((q) => q.totalReservas > 0 || q.faturamento > 0)
+      .sort((a, b) => b.faturamento - a.faturamento || b.totalReservas - a.totalReservas);
 
     const tendenciaPorDiaSemana = DIAS_SEMANA.map((nome, index) => ({
       dia: nome,
@@ -118,10 +153,12 @@ export async function relatoriosRoutes(app: FastifyInstance) {
 
     return reply.send({
       totalUnidades: unidades.length,
+      totalQuadras: quadras.length,
       faturamentoTotal: Math.round(faturamentoTotal * 100) / 100,
       totalReservasNaoCanceladas: reservas.filter((r) => r.status !== "cancelada").length,
       faturamentoPorUnidade,
       unidadesMaisSolicitadas,
+      desempenhoPorQuadra,
       tendenciaPorDiaSemana,
       evolucaoMensal,
       ocupacaoPorHorario,

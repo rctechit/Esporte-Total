@@ -43,7 +43,7 @@
           <input type="date" id="agenda-data" />
         </div>
       </div>
-      <div class="agenda-grid" id="agenda-grid">
+      <div id="agenda-container" style="display:flex; flex-direction:column; gap:20px;">
         <p class="state-message">Selecione uma unidade para ver a agenda do dia.</p>
       </div>
       <div class="badge-list" style="margin-top:14px;">
@@ -76,6 +76,7 @@
           <thead>
             <tr>
               <th>Unidade</th>
+              <th>Quadra</th>
               <th>Modalidade</th>
               <th>Data</th>
               <th>Horários</th>
@@ -87,7 +88,7 @@
             </tr>
           </thead>
           <tbody id="reservas-tbody">
-            <tr><td colspan="9">Carregando...</td></tr>
+            <tr><td colspan="10">Carregando...</td></tr>
           </tbody>
         </table>
       </div>

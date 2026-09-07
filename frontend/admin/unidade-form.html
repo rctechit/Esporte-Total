@@ -39,10 +39,6 @@
           <textarea id="descricao" maxlength="2000"></textarea>
         </div>
         <div class="form-field">
-          <label>Modalidades e preço da locação *</label>
-          <div id="modalidades-precos" style="display:flex; flex-direction:column; gap:8px;"></div>
-        </div>
-        <div class="form-field">
           <label for="horarioFuncionamento">Horário de funcionamento (texto exibido no site)</label>
           <input type="text" id="horarioFuncionamento" placeholder="Ex: Seg a Sex, 8h às 22h" maxlength="200" />
         </div>
@@ -61,6 +57,15 @@
           <input type="checkbox" id="ativo" checked />
           Unidade ativa (visível no site)
         </label>
+      </div>
+
+      <div class="info-card">
+        <div class="toolbar" style="margin-bottom: 4px;">
+          <h2 style="margin:0;">Quadras desta unidade *</h2>
+          <button type="button" class="btn btn--outline btn--sm" id="adicionar-quadra-btn">+ Adicionar quadra</button>
+        </div>
+        <p class="unidade-card__local">Cada quadra tem sua própria agenda — se uma estiver locada num horário, as outras continuam disponíveis para reserva.</p>
+        <div id="quadras-lista" style="display:flex; flex-direction:column; gap:14px;"></div>
       </div>
 
       <div class="info-card">

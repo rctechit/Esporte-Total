@@ -32,7 +32,7 @@ const STATUS_BADGE_CLASS = {
 
 async function carregarReservas() {
   const tbody = qs("#reservas-tbody");
-  tbody.innerHTML = '<tr><td colspan="9">Carregando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10">Carregando...</td></tr>';
 
   const status = qs("#filtro-status").value;
   const params = status ? `?status=${encodeURIComponent(status)}` : "";
@@ -41,7 +41,7 @@ async function carregarReservas() {
     const reservas = await api.get(`/reservas${params}`);
 
     if (!reservas.length) {
-      tbody.innerHTML = '<tr><td colspan="9">Nenhuma reserva encontrada.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10">Nenhuma reserva encontrada.</td></tr>';
       return;
     }
 
@@ -51,6 +51,9 @@ async function carregarReservas() {
 
       const tdUnidade = document.createElement("td");
       tdUnidade.textContent = reserva.unidade.nome;
+
+      const tdQuadra = document.createElement("td");
+      tdQuadra.textContent = reserva.quadra?.nome || "—";
 
       const tdModalidade = document.createElement("td");
       tdModalidade.textContent = reserva.modalidade.nome;
@@ -106,11 +109,11 @@ async function carregarReservas() {
       );
       tdAcoes.appendChild(whatsappBtn);
 
-      tr.append(tdUnidade, tdModalidade, tdData, tdHorarios, tdCliente, tdTelefone, tdValor, tdStatus, tdAcoes);
+      tr.append(tdUnidade, tdQuadra, tdModalidade, tdData, tdHorarios, tdCliente, tdTelefone, tdValor, tdStatus, tdAcoes);
       tbody.appendChild(tr);
     }
   } catch (error) {
-    tbody.innerHTML = '<tr><td colspan="9">Não foi possível carregar as reservas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10">Não foi possível carregar as reservas.</td></tr>';
     console.error(error);
   }
 }
@@ -170,51 +173,67 @@ async function carregarAgenda() {
   const unidadeId = qs("#agenda-unidade").value;
   const modalidadeId = qs("#agenda-modalidade").value;
   const data = qs("#agenda-data").value;
-  const grid = qs("#agenda-grid");
+  const container = qs("#agenda-container");
 
   if (!unidadeId || !modalidadeId || !data) {
-    grid.innerHTML = '<p class="state-message">Selecione unidade, modalidade e dia para ver a agenda.</p>';
+    container.innerHTML = '<p class="state-message">Selecione unidade, modalidade e dia para ver a agenda.</p>';
     return;
   }
 
-  grid.innerHTML = '<p class="state-message">Carregando agenda...</p>';
+  container.innerHTML = '<p class="state-message">Carregando agenda...</p>';
 
   try {
     const resultado = await api.get(`/unidades/${unidadeId}/agenda-admin?data=${data}&modalidadeId=${modalidadeId}`);
 
-    if (!resultado.horarios.length) {
-      grid.innerHTML = '<p class="state-message">Nenhum horário configurado para esta unidade.</p>';
+    if (!resultado.quadras.length) {
+      container.innerHTML = '<p class="state-message">Nenhuma quadra desta unidade oferece essa modalidade.</p>';
       return;
     }
 
-    grid.innerHTML = "";
-    for (const item of resultado.horarios) {
-      const slot = document.createElement("div");
-      slot.className = `agenda-slot agenda-slot--${item.status}`;
+    container.innerHTML = "";
+    for (const quadra of resultado.quadras) {
+      const bloco = document.createElement("div");
 
-      const hora = document.createElement("div");
-      hora.className = "agenda-slot__hora";
-      hora.textContent = item.horario;
+      const titulo = document.createElement("h3");
+      titulo.style.fontSize = "0.95rem";
+      titulo.style.marginBottom = "8px";
+      titulo.textContent = quadra.quadraNome;
+      bloco.appendChild(titulo);
 
-      const statusTexto = document.createElement("div");
-      statusTexto.className = "agenda-slot__status";
-      statusTexto.textContent =
-        item.status === "disponivel"
-          ? "Disponível"
-          : item.status === "aguardando_aprovacao"
-          ? "Aguardando"
-          : "Locado";
+      const grid = document.createElement("div");
+      grid.className = "agenda-grid";
 
-      slot.append(hora, statusTexto);
+      for (const item of quadra.horarios) {
+        const slot = document.createElement("div");
+        slot.className = `agenda-slot agenda-slot--${item.status}`;
 
-      if (item.nomeSolicitante) {
-        slot.title = `${item.nomeSolicitante} — ${item.telefoneSolicitante}`;
+        const hora = document.createElement("div");
+        hora.className = "agenda-slot__hora";
+        hora.textContent = item.horario;
+
+        const statusTexto = document.createElement("div");
+        statusTexto.className = "agenda-slot__status";
+        statusTexto.textContent =
+          item.status === "disponivel"
+            ? "Disponível"
+            : item.status === "aguardando_aprovacao"
+            ? "Aguardando"
+            : "Locado";
+
+        slot.append(hora, statusTexto);
+
+        if (item.nomeSolicitante) {
+          slot.title = `${item.nomeSolicitante} — ${item.telefoneSolicitante}`;
+        }
+
+        grid.appendChild(slot);
       }
 
-      grid.appendChild(slot);
+      bloco.appendChild(grid);
+      container.appendChild(bloco);
     }
   } catch (error) {
-    grid.innerHTML = '<p class="state-message">Não foi possível carregar a agenda.</p>';
+    container.innerHTML = '<p class="state-message">Não foi possível carregar a agenda.</p>';
     console.error(error);
   }
 }

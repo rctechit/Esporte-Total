@@ -15,6 +15,7 @@ function renderStats(resumo) {
     [formatarMoeda(resumo.faturamentoTotal), "Faturamento total (reservas locadas)"],
     [String(resumo.totalReservasNaoCanceladas), "Reservas ativas (aguardando + locadas)"],
     [String(resumo.totalUnidades), "Unidades cadastradas"],
+    [String(resumo.totalQuadras ?? 0), "Quadras cadastradas"],
   ];
 
   for (const [valor, label] of stats) {
@@ -186,6 +187,35 @@ function renderHeatmap(dados) {
   wrap.appendChild(legenda);
 }
 
+function renderTabelaQuadras(dados) {
+  const tbody = qs("#quadras-tbody");
+  tbody.innerHTML = "";
+
+  if (!dados.length) {
+    tbody.innerHTML = '<tr><td colspan="4">Nenhuma reserva registrada ainda.</td></tr>';
+    return;
+  }
+
+  for (const item of dados) {
+    const tr = document.createElement("tr");
+
+    const tdUnidade = document.createElement("td");
+    tdUnidade.textContent = item.unidadeNome;
+
+    const tdQuadra = document.createElement("td");
+    tdQuadra.textContent = item.quadraNome;
+
+    const tdReservas = document.createElement("td");
+    tdReservas.textContent = item.totalReservas;
+
+    const tdFaturamento = document.createElement("td");
+    tdFaturamento.textContent = formatarMoeda(item.faturamento);
+
+    tr.append(tdUnidade, tdQuadra, tdReservas, tdFaturamento);
+    tbody.appendChild(tr);
+  }
+}
+
 function renderChartTendencia(dados) {
   new Chart(qs("#chart-tendencia"), {
     type: "line",
@@ -223,10 +253,11 @@ async function carregarRelatorios() {
 
   renderStats(resumo);
 
-  // O mapa de horários é HTML/CSS puro (não depende do Chart.js), então
-  // renderiza mesmo se a biblioteca de gráficos falhar ao carregar.
+  // O mapa de horários e a tabela por quadra são HTML puro (não dependem do
+  // Chart.js), então renderizam mesmo se a biblioteca de gráficos falhar.
   try {
     renderHeatmap(resumo.ocupacaoPorHorario || []);
+    renderTabelaQuadras(resumo.desempenhoPorQuadra || []);
   } catch (error) {
     console.error(error);
   }

@@ -64,6 +64,26 @@
       <h3>Tendência de uso por dia da semana</h3>
       <canvas id="chart-tendencia"></canvas>
     </div>
+
+    <div class="chart-card">
+      <h3>Desempenho por quadra</h3>
+      <p class="card-sub">Faturamento e nº de reservas de cada quadra — útil quando 2 quadras da mesma unidade têm demanda bem diferente.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Unidade</th>
+              <th>Quadra</th>
+              <th>Reservas</th>
+              <th>Faturamento</th>
+            </tr>
+          </thead>
+          <tbody id="quadras-tbody">
+            <tr><td colspan="4">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script src="../js/vendor/chart.umd.js"></script>

@@ -569,6 +569,27 @@ p {
   padding: 20px;
 }
 
+.quadra-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+}
+
+.quadra-card__header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.quadra-card__modalidades {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .info-list {
   display: flex;
   flex-direction: column;

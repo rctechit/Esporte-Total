@@ -37,25 +37,25 @@ model AdminUser {
 }
 
 model Modalidade {
-  id        String               @id @default(cuid())
-  nome      String               @unique
-  slug      String               @unique
+  id        String             @id @default(cuid())
+  nome      String             @unique
+  slug      String             @unique
   descricao String?
   icone     String?
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  unidades  UnidadeModalidade[]
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  quadras   QuadraModalidade[]
   reservas  Reserva[]
 
   @@map("modalidades")
 }
 
 model Unidade {
-  id                   String               @id @default(cuid())
+  id                   String   @id @default(cuid())
   empresaId            String
-  empresa              Empresa              @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  empresa              Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome                 String
-  slug                 String               @unique
+  slug                 String   @unique
   descricao            String?
   telefone             String?
   whatsapp             String?
@@ -73,12 +73,11 @@ model Unidade {
   horarioFuncionamento String?
   horaAbertura         String?
   horaFechamento       String?
-  ativo                Boolean              @default(true)
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  modalidades          UnidadeModalidade[]
+  ativo                Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  quadras              Quadra[]
   fotos                Foto[]
-  reservas             Reserva[]
 
   @@index([cidade])
   @@index([estado])
@@ -87,21 +86,42 @@ model Unidade {
   @@map("unidades")
 }
 
-model UnidadeModalidade {
-  unidadeId    String
+// Uma unidade (endereco/complexo) pode ter varias quadras - cada uma
+// agendada de forma independente, com seu proprio nome e modalidades/precos.
+// Isso permite que 2 quadras estejam locadas no mesmo horario e uma terceira
+// continue disponivel.
+model Quadra {
+  id          String             @id @default(cuid())
+  unidadeId   String
+  unidade     Unidade            @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+  nome        String
+  ativa       Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  modalidades QuadraModalidade[]
+  reservas    Reserva[]
+
+  @@index([unidadeId])
+  @@map("quadras")
+}
+
+model QuadraModalidade {
+  quadraId     String
   modalidadeId String
   precoHora    Float?
-  unidade      Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+  quadra       Quadra     @relation(fields: [quadraId], references: [id], onDelete: Cascade)
   modalidade   Modalidade @relation(fields: [modalidadeId], references: [id], onDelete: Cascade)
 
-  @@id([unidadeId, modalidadeId])
-  @@map("unidade_modalidades")
+  @@id([quadraId, modalidadeId])
+  @@map("quadra_modalidades")
 }
 
 model Reserva {
   id                  String     @id @default(cuid())
-  unidadeId           String
+  quadraId            String
+  quadra              Quadra     @relation(fields: [quadraId], references: [id], onDelete: Cascade)
   modalidadeId        String
+  modalidade          Modalidade @relation(fields: [modalidadeId], references: [id])
   data                DateTime
   horarios            String[]
   nomeSolicitante     String
@@ -114,10 +134,8 @@ model Reserva {
   pixCopiaCola        String?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
-  unidade             Unidade    @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
-  modalidade          Modalidade @relation(fields: [modalidadeId], references: [id])
 
-  @@index([unidadeId, data])
+  @@index([quadraId, data])
   @@index([pixPaymentId])
   @@map("reservas")
 }

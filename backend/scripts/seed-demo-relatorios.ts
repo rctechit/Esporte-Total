@@ -3,11 +3,11 @@ import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/auth.js";
 import { uniqueSlug } from "../src/lib/slug.js";
 
-// Cria uma empresa/unidade "demo" isolada, com ~6 meses de reservas
-// ficticias, so para visualizar como os relatorios ficam com volume real de
-// dados. Roda direto no ambiente de producao (via Console do Railway) e e
-// seguro rodar mais de uma vez - se a empresa demo ja existir, so adiciona
-// mais reservas no mes atual.
+// Cria uma empresa/unidade "demo" isolada, com 3 quadras e ~6 meses de
+// reservas ficticias, so para visualizar como os relatorios (e a agenda por
+// quadra) ficam com volume real de dados. Roda direto no ambiente de
+// producao (via Console do Railway) e e seguro rodar mais de uma vez - se a
+// empresa demo ja existir, so acrescenta mais reservas no mes atual.
 //
 // Para apagar tudo depois, rode: npx tsx scripts/cleanup-demo-relatorios.ts
 
@@ -26,9 +26,10 @@ function randInt(min: number, max: number) {
 }
 
 async function main() {
-  const modalidade = await prisma.modalidade.findUnique({ where: { slug: "futebol" } });
-  if (!modalidade) {
-    throw new Error("Modalidade 'futebol' não encontrada — rode o seed principal primeiro.");
+  const futebol = await prisma.modalidade.findUnique({ where: { slug: "futebol" } });
+  const beachTenis = await prisma.modalidade.findUnique({ where: { slug: "beach-tenis" } });
+  if (!futebol || !beachTenis) {
+    throw new Error("Modalidades padrão não encontradas — rode o seed principal primeiro.");
   }
 
   let adminDemo = await prisma.adminUser.findUnique({ where: { email: DEMO_ADMIN_EMAIL } });
@@ -69,21 +70,43 @@ async function main() {
         estado: "PR",
         horaAbertura: "08:00",
         horaFechamento: "22:00",
-        modalidades: { create: { modalidadeId: modalidade.id, precoHora: 120 } },
+        quadras: {
+          create: [
+            { nome: "Quadra 1 - Society", modalidades: { create: { modalidadeId: futebol.id, precoHora: 120 } } },
+            { nome: "Quadra 2 - Society", modalidades: { create: { modalidadeId: futebol.id, precoHora: 120 } } },
+            { nome: "Quadra 3 - Beach Tênis", modalidades: { create: { modalidadeId: beachTenis.id, precoHora: 90 } } },
+          ],
+        },
       },
     });
-    console.log(`Unidade demo criada: ${unidade.nome} (${unidade.id})`);
+    console.log(`Unidade demo criada: ${unidade.nome} (${unidade.id}), com 3 quadras.`);
   }
+
+  const quadras = await prisma.quadra.findMany({
+    where: { unidadeId: unidade.id },
+    include: { modalidades: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  // pesos diferentes por quadra pra mostrar desempenho desigual no relatorio
+  // (ex: Quadra 1 mais concorrida que a Quadra 2, mesma modalidade)
+  const pesosQuadra = [0.45, 0.3, 0.25];
 
   const hoje = new Date();
   const registros = [];
 
   for (let mesOffset = 5; mesOffset >= 0; mesOffset -= 1) {
-    const totalMes = 15 + (5 - mesOffset) * 4; // crescimento mes a mes
+    const totalMes = 20 + (5 - mesOffset) * 5; // crescimento mes a mes
     for (let i = 0; i < totalMes; i += 1) {
       const diaDoMes = randInt(1, 27);
       const data = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - mesOffset, diaDoMes));
       if (data > hoje) continue;
+
+      const sorteio = Math.random();
+      const quadraIndex = sorteio < pesosQuadra[0] ? 0 : sorteio < pesosQuadra[0] + pesosQuadra[1] ? 1 : 2;
+      const quadra = quadras[quadraIndex];
+      const modalidadeId = quadra.modalidades[0].modalidadeId;
+      const precoHora = quadra.modalidades[0].precoHora || 100;
 
       const diaSemana = data.getUTCDay();
       const pesoNoite = diaSemana === 0 || diaSemana === 6 ? 0.85 : 0.65;
@@ -91,20 +114,20 @@ async function main() {
 
       const status = mesOffset === 0 && i >= totalMes - 3 ? "pendente" : "confirmada";
       registros.push({
-        unidadeId: unidade.id,
-        modalidadeId: modalidade.id,
+        quadraId: quadra.id,
+        modalidadeId,
         data,
         horarios: [horario],
         nomeSolicitante: NOMES[randInt(0, NOMES.length - 1)],
         telefoneSolicitante: `(41) 9${randInt(1000, 9999)}-${randInt(1000, 9999)}`,
-        valorTotal: status === "confirmada" ? 120 : null,
+        valorTotal: status === "confirmada" ? precoHora : null,
         status,
       });
     }
   }
 
   await prisma.reserva.createMany({ data: registros });
-  console.log(`Criadas ${registros.length} reservas ficticias na unidade demo.`);
+  console.log(`Criadas ${registros.length} reservas ficticias, distribuídas nas 3 quadras da unidade demo.`);
   console.log("\nPara apagar tudo depois: npx tsx scripts/cleanup-demo-relatorios.ts");
 }
 

@@ -3,6 +3,8 @@ const unidadeId = params.get("id");
 let unidadeAtual = null;
 let cloudinaryEnabled = false;
 let fotosPendentes = []; // fotos já enviadas ao Cloudinary aguardando a unidade ser criada
+let modalidadesCache = [];
+let quadraContador = 0;
 
 function mostrarAlerta(mensagem, tipo = "error") {
   const box = qs("#form-alert");
@@ -17,12 +19,10 @@ function limparAlerta() {
   qs("#form-alert").innerHTML = "";
 }
 
-async function carregarModalidadesComPreco(selecionadas = []) {
-  const wrap = qs("#modalidades-precos");
+function preencherModalidadesDaQuadra(wrap, selecionadas = []) {
   wrap.innerHTML = "";
-  const modalidades = await api.get("/modalidades");
 
-  for (const modalidade of modalidades) {
+  for (const modalidade of modalidadesCache) {
     const selecionada = selecionadas.find((s) => s.modalidadeId === modalidade.id);
 
     const linha = document.createElement("div");
@@ -67,16 +67,86 @@ async function carregarModalidadesComPreco(selecionadas = []) {
   }
 }
 
-function getModalidadesSelecionadas() {
-  return qsa('[data-modalidade-checkbox]:checked').map((checkbox) => {
-    const precoInput = qs(`[data-modalidade-preco="${checkbox.value}"]`);
-    const precoValor = precoInput?.value ? Number.parseFloat(precoInput.value) : undefined;
+function criarQuadraCard(quadraExistente = null) {
+  quadraContador += 1;
+
+  const card = document.createElement("div");
+  card.className = "quadra-card";
+  card.dataset.quadraId = quadraExistente?.id || "";
+
+  const header = document.createElement("div");
+  header.className = "quadra-card__header";
+
+  const campoNome = document.createElement("div");
+  campoNome.className = "form-field";
+  campoNome.style.flex = "1";
+  campoNome.style.minWidth = "160px";
+  const labelNome = document.createElement("label");
+  labelNome.textContent = "Nome da quadra";
+  const inputNome = document.createElement("input");
+  inputNome.type = "text";
+  inputNome.required = true;
+  inputNome.maxLength = 60;
+  inputNome.dataset.quadraNome = "1";
+  inputNome.value = quadraExistente?.nome || `Quadra ${quadraContador}`;
+  campoNome.append(labelNome, inputNome);
+
+  const campoAtiva = document.createElement("label");
+  campoAtiva.className = "checkbox-pill";
+  const checkboxAtiva = document.createElement("input");
+  checkboxAtiva.type = "checkbox";
+  checkboxAtiva.dataset.quadraAtiva = "1";
+  checkboxAtiva.checked = quadraExistente?.ativa !== false;
+  campoAtiva.append(checkboxAtiva, document.createTextNode(" Ativa"));
+
+  const removerBtn = document.createElement("button");
+  removerBtn.type = "button";
+  removerBtn.className = "btn btn--danger btn--sm";
+  removerBtn.textContent = "Remover";
+  removerBtn.addEventListener("click", () => {
+    if (qsa("#quadras-lista > .quadra-card").length <= 1) {
+      mostrarAlerta("A unidade precisa ter ao menos uma quadra.");
+      return;
+    }
+    card.remove();
+  });
+
+  header.append(campoNome, campoAtiva, removerBtn);
+
+  const modalidadesWrap = document.createElement("div");
+  modalidadesWrap.className = "quadra-card__modalidades";
+
+  card.append(header, modalidadesWrap);
+  qs("#quadras-lista").appendChild(card);
+
+  preencherModalidadesDaQuadra(modalidadesWrap, quadraExistente?.modalidades || []);
+
+  return card;
+}
+
+function getQuadrasFormulario() {
+  return qsa("#quadras-lista > .quadra-card").map((card) => {
+    const modalidades = Array.from(card.querySelectorAll("[data-modalidade-checkbox]:checked")).map((checkbox) => {
+      const precoInput = card.querySelector(`[data-modalidade-preco="${checkbox.value}"]`);
+      const precoValor = precoInput?.value ? Number.parseFloat(precoInput.value) : undefined;
+      return {
+        modalidadeId: checkbox.value,
+        ...(precoValor ? { precoHora: precoValor } : {}),
+      };
+    });
+
     return {
-      modalidadeId: checkbox.value,
-      ...(precoValor ? { precoHora: precoValor } : {}),
+      ...(card.dataset.quadraId ? { id: card.dataset.quadraId } : {}),
+      nome: card.querySelector("[data-quadra-nome]").value.trim(),
+      ativa: card.querySelector("[data-quadra-ativa]").checked,
+      modalidades,
     };
   });
 }
+
+qs("#adicionar-quadra-btn").addEventListener("click", () => {
+  criarQuadraCard();
+});
 
 function preencherFormulario(unidade) {
   qs("#nome").value = unidade.nome || "";
@@ -117,7 +187,7 @@ function coletarDadosFormulario() {
     whatsapp: qs("#whatsapp").value.trim(),
     email: qs("#email").value.trim(),
     site: qs("#site").value.trim(),
-    modalidades: getModalidadesSelecionadas(),
+    quadras: getQuadrasFormulario(),
     ...(qs("#campo-empresa").hidden ? {} : { empresaId: qs("#empresaId").value }),
   };
 }
@@ -300,8 +370,14 @@ qs("#unidade-form").addEventListener("submit", async (event) => {
 
   const dados = coletarDadosFormulario();
 
-  if (!dados.modalidades.length) {
-    mostrarAlerta("Selecione ao menos uma modalidade.");
+  if (!dados.quadras.length) {
+    mostrarAlerta("Cadastre ao menos uma quadra.");
+    return;
+  }
+
+  const quadraSemModalidade = dados.quadras.find((q) => !q.modalidades.length);
+  if (quadraSemModalidade) {
+    mostrarAlerta(`Selecione ao menos uma modalidade para a "${quadraSemModalidade.nome}".`);
     return;
   }
 
@@ -335,6 +411,7 @@ async function init() {
   if (!admin) return;
 
   await configurarSecaoFotos();
+  modalidadesCache = await api.get("/modalidades");
 
   if (unidadeId) {
     qs("#form-title").textContent = "Editar unidade";
@@ -345,12 +422,16 @@ async function init() {
       if (admin.role === "super_admin") {
         await carregarSeletorEmpresa(unidadeAtual.empresaId);
       }
-      await carregarModalidadesComPreco(
-        (unidadeAtual.modalidades || []).map((rel) => ({
-          modalidadeId: rel.modalidadeId,
-          precoHora: rel.precoHora,
-        }))
-      );
+
+      qs("#quadras-lista").innerHTML = "";
+      if (unidadeAtual.quadras?.length) {
+        for (const quadra of unidadeAtual.quadras) {
+          criarQuadraCard(quadra);
+        }
+      } else {
+        criarQuadraCard();
+      }
+
       renderFotos();
     } catch (error) {
       mostrarAlerta("Unidade não encontrada.");
@@ -359,7 +440,7 @@ async function init() {
     if (admin.role === "super_admin") {
       await carregarSeletorEmpresa();
     }
-    await carregarModalidadesComPreco();
+    criarQuadraCard();
   }
 }
 

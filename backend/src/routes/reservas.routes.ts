@@ -4,9 +4,22 @@ import { requireAuth, empresaFiltro } from "../middleware/requireAuth.js";
 import { updateReservaStatusSchema } from "../schemas/unidade.schema.js";
 
 const reservaInclude = {
-  unidade: { select: { id: true, nome: true, slug: true, empresaId: true } },
+  quadra: {
+    select: {
+      id: true,
+      nome: true,
+      unidade: { select: { id: true, nome: true, slug: true, empresaId: true } },
+    },
+  },
   modalidade: { select: { id: true, nome: true } },
 };
+
+// O frontend espera `reserva.unidade` e `reserva.quadra` (nome da quadra) —
+// achata a estrutura aninhada quadra->unidade vinda do Prisma.
+function achatarReserva<T extends { quadra: { id: string; nome: string; unidade: unknown } }>(reserva: T) {
+  const { quadra, ...rest } = reserva;
+  return { ...rest, quadra: { id: quadra.id, nome: quadra.nome }, unidade: quadra.unidade };
+}
 
 export async function reservasRoutes(app: FastifyInstance) {
   app.get("/", { preHandler: requireAuth }, async (request, reply) => {
@@ -19,13 +32,13 @@ export async function reservasRoutes(app: FastifyInstance) {
         // aguardando_pagamento so interessa ao cliente que esta pagando -
         // o dono da quadra so ve a reserva depois que o Pix confirma.
         ...(status ? {} : { status: { not: "aguardando_pagamento" } }),
-        ...(empresaId ? { unidade: { empresaId } } : {}),
+        ...(empresaId ? { quadra: { unidade: { empresaId } } } : {}),
       },
       include: reservaInclude,
       orderBy: [{ data: "asc" }, { createdAt: "desc" }],
     });
 
-    return reply.send(reservas);
+    return reply.send(reservas.map(achatarReserva));
   });
 
   app.put("/:id", { preHandler: requireAuth }, async (request, reply) => {
@@ -38,9 +51,9 @@ export async function reservasRoutes(app: FastifyInstance) {
 
     const existing = await prisma.reserva.findUnique({
       where: { id },
-      include: { unidade: { select: { empresaId: true } } },
+      include: { quadra: { select: { unidade: { select: { empresaId: true } } } } },
     });
-    if (!existing || (empresaId && existing.unidade.empresaId !== empresaId)) {
+    if (!existing || (empresaId && existing.quadra.unidade.empresaId !== empresaId)) {
       return reply.code(404).send({ error: "Reserva não encontrada." });
     }
 
@@ -50,6 +63,6 @@ export async function reservasRoutes(app: FastifyInstance) {
       include: reservaInclude,
     });
 
-    return reply.send(reserva);
+    return reply.send(achatarReserva(reserva));
   });
 }

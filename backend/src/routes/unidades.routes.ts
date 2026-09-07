@@ -8,6 +8,7 @@ import {
   addFotoSchema,
   disponibilidadeQuerySchema,
   createReservaSchema,
+  type QuadraInput,
 } from "../schemas/unidade.schema.js";
 import { uniqueSlug } from "../lib/slug.js";
 import { geocodeAddress } from "../lib/geocode.js";
@@ -16,9 +17,47 @@ import { criarPagamentoPix, mercadoPagoEnabled } from "../lib/mercadopago.js";
 import { env } from "../env.js";
 
 const unidadeInclude = {
-  modalidades: { include: { modalidade: true } },
+  quadras: {
+    include: { modalidades: { include: { modalidade: true } } },
+    orderBy: { createdAt: "asc" as const },
+  },
   fotos: { orderBy: { ordem: "asc" as const } },
 };
+
+// A pagina publica/o dashboard esperam `unidade.modalidades` (uma lista
+// achatada de modalidade+preco), como antes de existirem quadras. Aqui
+// derivamos isso a partir das quadras: quando mais de uma quadra oferece a
+// mesma modalidade, mostramos o menor preco ("a partir de").
+function derivarModalidades(
+  quadras: Array<{ ativa: boolean; modalidades: Array<{ modalidadeId: string; precoHora: number | null; modalidade: unknown }> }>,
+  { somenteAtivas = false }: { somenteAtivas?: boolean } = {}
+) {
+  const mapa = new Map<string, { modalidadeId: string; precoHora: number | null; modalidade: unknown }>();
+
+  for (const quadra of quadras) {
+    if (somenteAtivas && !quadra.ativa) continue;
+
+    for (const rel of quadra.modalidades) {
+      const atual = mapa.get(rel.modalidadeId);
+      if (!atual) {
+        mapa.set(rel.modalidadeId, { modalidadeId: rel.modalidadeId, precoHora: rel.precoHora, modalidade: rel.modalidade });
+        continue;
+      }
+      if (rel.precoHora != null && (atual.precoHora == null || rel.precoHora < atual.precoHora)) {
+        atual.precoHora = rel.precoHora;
+      }
+    }
+  }
+
+  return Array.from(mapa.values());
+}
+
+function comModalidadesDerivadas<T extends { quadras?: Parameters<typeof derivarModalidades>[0] }>(
+  unidade: T,
+  opts?: { somenteAtivas?: boolean }
+) {
+  return { ...unidade, modalidades: derivarModalidades(unidade.quadras || [], opts) };
+}
 
 function blankToUndefined<T extends Record<string, unknown>>(data: T): T {
   const result = { ...data };
@@ -41,6 +80,13 @@ function buildEnderecoCompleto(input: {
   return partes.filter(Boolean).join(", ");
 }
 
+async function validarModalidadesDasQuadras(quadras: QuadraInput[]) {
+  const ids = Array.from(new Set(quadras.flatMap((q) => q.modalidades.map((m) => m.modalidadeId))));
+  if (!ids.length) return true;
+  const existentes = await prisma.modalidade.count({ where: { id: { in: ids } } });
+  return existentes === ids.length;
+}
+
 export async function unidadesRoutes(app: FastifyInstance) {
   app.get("/admin/todas", { preHandler: requireAuth }, async (request, reply) => {
     const parseResult = listUnidadesQuerySchema.safeParse(request.query);
@@ -52,7 +98,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     const where = {
       ...(empresaId ? { empresaId } : {}),
-      ...(modalidade ? { modalidades: { some: { modalidade: { slug: modalidade } } } } : {}),
+      ...(modalidade ? { quadras: { some: { modalidades: { some: { modalidade: { slug: modalidade } } } } } } : {}),
       ...(cidade ? { cidade: { equals: cidade, mode: "insensitive" as const } } : {}),
       ...(busca
         ? {
@@ -76,7 +122,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       }),
     ]);
 
-    return reply.send({ total, page, pageSize, unidades });
+    return reply.send({ total, page, pageSize, unidades: unidades.map((u) => comModalidadesDerivadas(u)) });
   });
 
   app.get("/admin/:id", { preHandler: requireAuth }, async (request, reply) => {
@@ -88,7 +134,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    return reply.send(unidade);
+    return reply.send(comModalidadesDerivadas(unidade));
   });
 
   app.get("/", async (request, reply) => {
@@ -100,7 +146,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
     const where = {
       ativo: true,
-      ...(modalidade ? { modalidades: { some: { modalidade: { slug: modalidade } } } } : {}),
+      ...(modalidade ? { quadras: { some: { ativa: true, modalidades: { some: { modalidade: { slug: modalidade } } } } } } : {}),
       ...(cidade ? { cidade: { equals: cidade, mode: "insensitive" as const } } : {}),
       ...(busca
         ? {
@@ -124,7 +170,12 @@ export async function unidadesRoutes(app: FastifyInstance) {
       }),
     ]);
 
-    return reply.send({ total, page, pageSize, unidades });
+    return reply.send({
+      total,
+      page,
+      pageSize,
+      unidades: unidades.map((u) => comModalidadesDerivadas(u, { somenteAtivas: true })),
+    });
   });
 
   app.get("/:slug", async (request, reply) => {
@@ -138,7 +189,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    return reply.send(unidade);
+    return reply.send(comModalidadesDerivadas(unidade, { somenteAtivas: true }));
   });
 
   app.post("/", { preHandler: requireAuth }, async (request, reply) => {
@@ -147,7 +198,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Dados inválidos.", details: parseResult.error.flatten() });
     }
 
-    const { modalidades, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
+    const { quadras, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
 
     let empresaId: string;
     if (request.user.role === "super_admin") {
@@ -167,10 +218,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: "Empresa informada não existe." });
     }
 
-    const modalidadesExistentes = await prisma.modalidade.count({
-      where: { id: { in: modalidades.map((m) => m.modalidadeId) } },
-    });
-    if (modalidadesExistentes !== modalidades.length) {
+    if (!(await validarModalidadesDasQuadras(quadras))) {
       return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
     }
 
@@ -196,14 +244,20 @@ export async function unidadesRoutes(app: FastifyInstance) {
         slug,
         latitude: geo?.latitude,
         longitude: geo?.longitude,
-        modalidades: {
-          create: modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
+        quadras: {
+          create: quadras.map((q) => ({
+            nome: q.nome,
+            ativa: q.ativa ?? true,
+            modalidades: {
+              create: q.modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
+            },
+          })),
         },
       },
       include: unidadeInclude,
     });
 
-    return reply.code(201).send(unidade);
+    return reply.code(201).send(comModalidadesDerivadas(unidade));
   });
 
   app.put("/:id", { preHandler: requireAuth }, async (request, reply) => {
@@ -219,15 +273,10 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const { modalidades, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
+    const { quadras, empresaId: empresaIdBody, ...rest } = blankToUndefined(parseResult.data);
 
-    if (modalidades) {
-      const modalidadesExistentes = await prisma.modalidade.count({
-        where: { id: { in: modalidades.map((m) => m.modalidadeId) } },
-      });
-      if (modalidadesExistentes !== modalidades.length) {
-        return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
-      }
+    if (quadras && !(await validarModalidadesDasQuadras(quadras))) {
+      return reply.code(400).send({ error: "Uma ou mais modalidades informadas não existem." });
     }
 
     // Só super_admin pode reatribuir a unidade a outra empresa; um dono comum
@@ -237,6 +286,31 @@ export async function unidadesRoutes(app: FastifyInstance) {
       if (!empresa) {
         return reply.code(400).send({ error: "Empresa informada não existe." });
       }
+    }
+
+    let idsParaRemover: string[] = [];
+    if (quadras) {
+      const quadrasExistentes = await prisma.quadra.findMany({
+        where: { unidadeId: id },
+        select: { id: true, _count: { select: { reservas: true } } },
+      });
+      const idsValidos = new Set(quadrasExistentes.map((q) => q.id));
+
+      for (const q of quadras) {
+        if (q.id && !idsValidos.has(q.id)) {
+          return reply.code(400).send({ error: "Uma das quadras informadas não pertence a esta unidade." });
+        }
+      }
+
+      const idsEnviados = new Set(quadras.filter((q): q is QuadraInput & { id: string } => Boolean(q.id)).map((q) => q.id));
+      const paraRemover = quadrasExistentes.filter((q) => !idsEnviados.has(q.id));
+      const comReservas = paraRemover.find((q) => q._count.reservas > 0);
+      if (comReservas) {
+        return reply.code(400).send({
+          error: "Não é possível excluir uma quadra que já tem reservas — desmarque a opção \"ativa\" nela em vez de removê-la.",
+        });
+      }
+      idsParaRemover = paraRemover.map((q) => q.id);
     }
 
     const enderecoMudou =
@@ -260,8 +334,37 @@ export async function unidadesRoutes(app: FastifyInstance) {
     }
 
     const unidade = await prisma.$transaction(async (tx) => {
-      if (modalidades) {
-        await tx.unidadeModalidade.deleteMany({ where: { unidadeId: id } });
+      if (quadras) {
+        if (idsParaRemover.length) {
+          await tx.quadra.deleteMany({ where: { id: { in: idsParaRemover } } });
+        }
+
+        for (const q of quadras) {
+          if (q.id) {
+            await tx.quadraModalidade.deleteMany({ where: { quadraId: q.id } });
+            await tx.quadra.update({
+              where: { id: q.id },
+              data: {
+                nome: q.nome,
+                ativa: q.ativa ?? true,
+                modalidades: {
+                  create: q.modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
+                },
+              },
+            });
+          } else {
+            await tx.quadra.create({
+              data: {
+                unidadeId: id,
+                nome: q.nome,
+                ativa: q.ativa ?? true,
+                modalidades: {
+                  create: q.modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
+                },
+              },
+            });
+          }
+        }
       }
 
       return tx.unidade.update({
@@ -270,19 +373,12 @@ export async function unidadesRoutes(app: FastifyInstance) {
           ...rest,
           ...(empresaIdBody && request.user.role === "super_admin" ? { empresaId: empresaIdBody } : {}),
           ...(geo ? { latitude: geo.latitude, longitude: geo.longitude } : {}),
-          ...(modalidades
-            ? {
-                modalidades: {
-                  create: modalidades.map((m) => ({ modalidadeId: m.modalidadeId, precoHora: m.precoHora })),
-                },
-              }
-            : {}),
         },
         include: unidadeInclude,
       });
     });
 
-    return reply.send(unidade);
+    return reply.send(comModalidadesDerivadas(unidade));
   });
 
   app.delete("/:id", { preHandler: requireAuth }, async (request, reply) => {
@@ -337,9 +433,8 @@ export async function unidadesRoutes(app: FastifyInstance) {
   });
 
   // Agenda do dono: mostra os 3 estados que importam pro negocio (disponivel,
-  // aguardando aprovacao, locado). Diferente da rota publica, aqui a reserva
-  // com Pix ainda pendente tambem aparece (o dono ve que o horario esta
-  // "em processo"), so nao aparece nada pra reserva cancelada.
+  // aguardando aprovacao, locado), agora com uma grade por quadra - 2 quadras
+  // podem estar locadas no mesmo horario e uma terceira continuar livre.
   app.get("/:id/agenda-admin", { preHandler: requireAuth }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const empresaId = empresaFiltro(request);
@@ -354,6 +449,15 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
+    const quadras = await prisma.quadra.findMany({
+      where: { unidadeId: id, modalidades: { some: { modalidadeId } } },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!quadras.length) {
+      return reply.send({ quadras: [] });
+    }
+
     const slots = gerarSlots(
       unidade.horaAbertura || HORA_ABERTURA_PADRAO,
       unidade.horaFechamento || HORA_FECHAMENTO_PADRAO
@@ -362,14 +466,23 @@ export async function unidadesRoutes(app: FastifyInstance) {
     const dataConsulta = new Date(`${data}T00:00:00.000Z`);
 
     const reservasDoDia = await prisma.reserva.findMany({
-      where: { unidadeId: id, modalidadeId, data: dataConsulta, status: { not: "cancelada" } },
-      select: { horarios: true, status: true, nomeSolicitante: true, telefoneSolicitante: true },
+      where: {
+        quadraId: { in: quadras.map((q) => q.id) },
+        modalidadeId,
+        data: dataConsulta,
+        status: { not: "cancelada" },
+      },
+      select: { quadraId: true, horarios: true, status: true, nomeSolicitante: true, telefoneSolicitante: true },
     });
 
-    const statusPorHorario = new Map<string, { status: string; nomeSolicitante: string; telefoneSolicitante: string }>();
+    const porQuadra = new Map<string, Map<string, { status: string; nomeSolicitante: string; telefoneSolicitante: string }>>(
+      quadras.map((q) => [q.id, new Map()])
+    );
     for (const reserva of reservasDoDia) {
+      const mapaHorarios = porQuadra.get(reserva.quadraId);
+      if (!mapaHorarios) continue;
       for (const horario of reserva.horarios) {
-        statusPorHorario.set(horario, {
+        mapaHorarios.set(horario, {
           status: reserva.status,
           nomeSolicitante: reserva.nomeSolicitante,
           telefoneSolicitante: reserva.telefoneSolicitante,
@@ -377,24 +490,24 @@ export async function unidadesRoutes(app: FastifyInstance) {
       }
     }
 
-    const horarios = slots.map((horario) => {
-      const ocupado = statusPorHorario.get(horario);
-      if (!ocupado) {
-        return { horario, status: "disponivel" as const };
-      }
-      const statusLabel =
-        ocupado.status === "confirmada"
-          ? ("locado" as const)
-          : ("aguardando_aprovacao" as const);
-      return {
-        horario,
-        status: statusLabel,
-        nomeSolicitante: ocupado.nomeSolicitante,
-        telefoneSolicitante: ocupado.telefoneSolicitante,
-      };
-    });
+    const resultado = quadras.map((quadra) => ({
+      quadraId: quadra.id,
+      quadraNome: quadra.nome,
+      horarios: slots.map((horario) => {
+        const ocupado = porQuadra.get(quadra.id)?.get(horario);
+        if (!ocupado) {
+          return { horario, status: "disponivel" as const };
+        }
+        return {
+          horario,
+          status: ocupado.status === "confirmada" ? ("locado" as const) : ("aguardando_aprovacao" as const),
+          nomeSolicitante: ocupado.nomeSolicitante,
+          telefoneSolicitante: ocupado.telefoneSolicitante,
+        };
+      }),
+    }));
 
-    return reply.send({ horarios });
+    return reply.send({ quadras: resultado });
   });
 
   app.get("/:slug/disponibilidade", async (request, reply) => {
@@ -410,12 +523,17 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const vinculo = await prisma.unidadeModalidade.findUnique({
-      where: { unidadeId_modalidadeId: { unidadeId: unidade.id, modalidadeId } },
+    const quadras = await prisma.quadra.findMany({
+      where: { unidadeId: unidade.id, ativa: true, modalidades: { some: { modalidadeId } } },
+      include: { modalidades: { where: { modalidadeId } } },
     });
-    if (!vinculo) {
+
+    if (!quadras.length) {
       return reply.code(400).send({ error: "Esta unidade não oferece a modalidade informada." });
     }
+
+    const precos = quadras.map((q) => q.modalidades[0]?.precoHora).filter((p): p is number => p != null);
+    const precoHora = precos.length ? Math.min(...precos) : null;
 
     const slots = gerarSlots(
       unidade.horaAbertura || HORA_ABERTURA_PADRAO,
@@ -428,21 +546,32 @@ export async function unidadesRoutes(app: FastifyInstance) {
     // pagando pelo mesmo slot ao mesmo tempo) - so cancelada libera.
     const reservasDoDia = await prisma.reserva.findMany({
       where: {
-        unidadeId: unidade.id,
+        quadraId: { in: quadras.map((q) => q.id) },
         modalidadeId,
         data: dataConsulta,
         status: { not: "cancelada" },
       },
-      select: { horarios: true },
+      select: { quadraId: true, horarios: true },
     });
 
-    const horariosOcupados = new Set(reservasDoDia.flatMap((r) => r.horarios));
+    const ocupadoPorQuadra = new Map<string, Set<string>>(quadras.map((q) => [q.id, new Set()]));
+    for (const reserva of reservasDoDia) {
+      const set = ocupadoPorQuadra.get(reserva.quadraId);
+      if (!set) continue;
+      for (const horario of reserva.horarios) set.add(horario);
+    }
 
+    // O horario so aparece como indisponivel quando TODAS as quadras dessa
+    // modalidade estiverem ocupadas nele - se sobrar uma quadra livre, o
+    // cliente ainda pode reservar (a quadra especifica e escolhida no back).
     return reply.send({
-      precoHora: vinculo.precoHora,
+      precoHora,
       horaAbertura: unidade.horaAbertura || HORA_ABERTURA_PADRAO,
       horaFechamento: unidade.horaFechamento || HORA_FECHAMENTO_PADRAO,
-      horarios: slots.map((horario) => ({ horario, disponivel: !horariosOcupados.has(horario) })),
+      horarios: slots.map((horario) => ({
+        horario,
+        disponivel: quadras.some((q) => !ocupadoPorQuadra.get(q.id)?.has(horario)),
+      })),
     });
   });
 
@@ -459,10 +588,13 @@ export async function unidadesRoutes(app: FastifyInstance) {
       return reply.code(404).send({ error: "Unidade não encontrada." });
     }
 
-    const vinculo = await prisma.unidadeModalidade.findUnique({
-      where: { unidadeId_modalidadeId: { unidadeId: unidade.id, modalidadeId } },
+    const quadrasCandidatas = await prisma.quadra.findMany({
+      where: { unidadeId: unidade.id, ativa: true, modalidades: { some: { modalidadeId } } },
+      include: { modalidades: { where: { modalidadeId } } },
+      orderBy: { createdAt: "asc" },
     });
-    if (!vinculo) {
+
+    if (!quadrasCandidatas.length) {
       return reply.code(400).send({ error: "Esta unidade não oferece a modalidade informada." });
     }
 
@@ -477,21 +609,33 @@ export async function unidadesRoutes(app: FastifyInstance) {
     const dataReserva = new Date(`${data}T00:00:00.000Z`);
 
     const reservaCriada = await prisma.$transaction(async (tx) => {
-      const conflitos = await tx.reserva.findMany({
-        where: {
-          unidadeId: unidade.id,
-          modalidadeId,
-          data: dataReserva,
-          status: { not: "cancelada" },
-          horarios: { hasSome: horarios },
-        },
-      });
+      // Tenta encaixar a reserva em alguma quadra que esteja livre em TODOS
+      // os horarios pedidos - a primeira que servir e a escolhida. Isso e o
+      // que permite 2 quadras estarem locadas no mesmo horario e uma
+      // terceira continuar disponivel para reserva.
+      let quadraEscolhida: (typeof quadrasCandidatas)[number] | null = null;
 
-      if (conflitos.length > 0) {
+      for (const quadra of quadrasCandidatas) {
+        const conflitos = await tx.reserva.findMany({
+          where: {
+            quadraId: quadra.id,
+            data: dataReserva,
+            status: { not: "cancelada" },
+            horarios: { hasSome: horarios },
+          },
+        });
+        if (conflitos.length === 0) {
+          quadraEscolhida = quadra;
+          break;
+        }
+      }
+
+      if (!quadraEscolhida) {
         throw new Error("CONFLITO_HORARIO");
       }
 
-      const valorTotal = vinculo.precoHora ? vinculo.precoHora * horarios.length : null;
+      const precoHora = quadraEscolhida.modalidades[0]?.precoHora ?? null;
+      const valorTotal = precoHora ? precoHora * horarios.length : null;
       const valorSinal = valorTotal ? Math.round(valorTotal * 0.3 * 100) / 100 : null;
 
       // Sem Mercado Pago configurado (ou sem preco definido para calcular o
@@ -500,7 +644,7 @@ export async function unidadesRoutes(app: FastifyInstance) {
 
       return tx.reserva.create({
         data: {
-          unidadeId: unidade.id,
+          quadraId: quadraEscolhida.id,
           modalidadeId,
           data: dataReserva,
           horarios,

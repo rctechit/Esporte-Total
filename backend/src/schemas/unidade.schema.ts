@@ -8,6 +8,13 @@ const modalidadePrecoSchema = z.object({
   precoHora: z.number().positive().max(100000).optional(),
 });
 
+export const quadraSchema = z.object({
+  id: z.string().cuid().optional(),
+  nome: z.string().min(1, "Dê um nome para a quadra").max(60),
+  ativa: z.boolean().optional(),
+  modalidades: z.array(modalidadePrecoSchema).min(1, "Selecione ao menos uma modalidade para a quadra"),
+});
+
 export const createUnidadeSchema = z.object({
   nome: z.string().min(2).max(120),
   descricao: z.string().max(2000).optional(),
@@ -27,11 +34,11 @@ export const createUnidadeSchema = z.object({
   horaFechamento: z.string().regex(horaRegex).optional().or(z.literal("")),
   ativo: z.boolean().optional(),
   empresaId: z.string().cuid().optional(),
-  modalidades: z.array(modalidadePrecoSchema).min(1, "Selecione ao menos uma modalidade"),
+  quadras: z.array(quadraSchema).min(1, "Cadastre ao menos uma quadra"),
 });
 
 export const updateUnidadeSchema = createUnidadeSchema.partial().extend({
-  modalidades: z.array(modalidadePrecoSchema).min(1).optional(),
+  quadras: z.array(quadraSchema).min(1).optional(),
 });
 
 export const listUnidadesQuerySchema = z.object({
@@ -68,6 +75,7 @@ export const updateReservaStatusSchema = z.object({
   status: z.enum(["pendente", "confirmada", "cancelada"]),
 });
 
+export type QuadraInput = z.infer<typeof quadraSchema>;
 export type CreateUnidadeInput = z.infer<typeof createUnidadeSchema>;
 export type UpdateUnidadeInput = z.infer<typeof updateUnidadeSchema>;
 export type ListUnidadesQuery = z.infer<typeof listUnidadesQuerySchema>;
